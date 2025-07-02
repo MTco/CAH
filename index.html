@@ -15,6 +15,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cards Against Humanity Online - © Mathew Tyler</title>
+    <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiQ2FyZHMgQWdhaW5zdCBIdW1hbml0eSIsInNob3J0X25hbWUiOiJDQUgiLCJkZXNjcmlwdGlvbiI6IkEgZGVjZW50cmFsaXplZCBDYXJkcyBBZ2FpbnN0IEh1bWFuaXR5IGdhbWUiLCJzdGFydF91cmwiOiIuLyIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiMwMDAwMDAiLCJ0aGVtZV9jb2xvciI6IiMwMDAwMDAiLCJpY29ucyI6W3sic3JjIjoiZGF0YTppbWFnZS9zdmcreG1sO2Jhc2U2NCxQSE4yWnlCM2FXUjBhRDBpTVRJNElpQm9aV2xuYUhROUlqRXlPQ0lpSUhacFpYZENiM2c5SWpBZ01DQXhNamd0TVRJNENYb2c8L25tYm5OK0lFaEVUVlZPYVc1dklPUzlqT1M4ajZpaWEyREFqK0dGc2dnPT0iLCJzaXplcyI6IjUxMng1MTIiLCJ0eXBlIjoiaW1hZ2Uvc3ZnK3htbCJ9XX0=">
     <meta name="theme-color" content="#000000">
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <style>
@@ -806,6 +807,7 @@
                     <label for="connectionMethod">Connection Method (for new rooms):</label>
                     <select id="connectionMethod">
                         <option value="cloud-sync" selected>Hybrid (Cloud Sync)</option>
+                        <option value="host-migration">WebRTC + Host Migration</option>
                         <option value="pure-webrtc">Pure WebRTC (Manual)</option>
                     </select>
                 </div>
@@ -1046,29 +1048,10 @@
         </div>
     </div>
 
-    <!-- Manual WebRTC Modal -->
-    <div class="modal" id="manualRtcModal">
-        <div class="modal-content">
-            <h2 id="manualRtcTitle">Manual Connection</h2>
-            <p id="manualRtcMessage" style="margin: 15px 0;"></p>
-            <div class="input-group">
-                <label id="manualRtcCodeLabel">Code:</label>
-                <textarea id="manualRtcCode" rows="4" readonly style="word-break: break-all;"></textarea>
-                 <button class="btn" onclick="copyManualCode()">Copy Code</button>
-            </div>
-            <div class="input-group" id="manualRtcInputGroup">
-                <label id="manualRtcInputLabel">Enter Peer's Code:</label>
-                <textarea id="manualRtcInput" rows="4"></textarea>
-            </div>
-            <button class="btn" id="manualRtcSubmit">Submit</button>
-            <button class="btn btn-danger" id="manualRtcCancel">Cancel</button>
-        </div>
-    </div>
-
     <!-- Attribution Footer - Non-Removable -->
-    <div class="attribution-footer minimized" id="attributionFooter">
+    <div class="attribution-footer" id="attributionFooter">
         <div class="attribution-header" onclick="toggleAttribution()">
-            <span>© All Rights Reserved - Mathew Tyler</span>
+            <span>© All Rights Reserved - Cards Against Humanity Online</span>
             <span class="toggle-icon">▲</span>
         </div>
         <div class="attribution-content" id="attributionContent">
@@ -1105,7 +1088,7 @@
         };
 
         let networkState = {
-            method: 'cloud-sync', connections: new Map(), localId: generateId(),
+            method: 'host-migration', connections: new Map(), localId: generateId(),
             isHost: false, hostId: null, dataChannels: new Map(), signaling: null, pollingInterval: null
         };
         
@@ -1117,7 +1100,7 @@
         };
 
         const METHOD_PREFIXES = {
-            'cloud-sync': 'C', 'pure-webrtc': 'M'
+            'cloud-sync': 'C', 'host-migration': 'H', 'pure-webrtc': 'M'
         };
 
         let notifications, qrGenerator, qrScanner, networkManager;
@@ -1436,24 +1419,23 @@
             }
         }
 
-        class JsonBlobSignaling {
+        class NpointSignaling {
             constructor() {
-                this.baseUrl = 'https://jsonblob.com/api/jsonBlob';
+                this.baseUrl = 'https://api.npoint.io/';
             }
 
             async createRoom(initialData) {
                 try {
                     const response = await fetch(this.baseUrl, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(initialData)
                     });
                     if (!response.ok) throw new Error(`API error: ${response.statusText}`);
-                    const location = response.headers.get('Location');
-                    if (!location) throw new Error('Location header not found in response');
-                    return location.split('/').pop(); // Return only the ID
+                    const result = await response.json();
+                    return result.id; // This is the bin ID
                 } catch (error) {
-                    console.error('Failed to create jsonblob.com room:', error);
+                    console.error('Failed to create npoint.io room:', error);
                     notifications.show('Could not create signaling room.', 'error');
                     return null;
                 }
@@ -1461,8 +1443,8 @@
 
             async getRoomData(binId) {
                 try {
-                    const response = await fetch(`${this.baseUrl}/${binId}`);
-                    if (response.status === 404) return null;
+                    const response = await fetch(`${this.baseUrl}${binId}`);
+                    if (response.status === 404) return null; // Room not found
                     if (!response.ok) throw new Error(`API error: ${response.statusText}`);
                     return await response.json();
                 } catch (error) {
@@ -1473,7 +1455,7 @@
 
             async updateRoomData(binId, data) {
                 try {
-                    const response = await fetch(`${this.baseUrl}/${binId}`, {
+                    const response = await fetch(`${this.baseUrl}${binId}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(data)
@@ -1497,11 +1479,16 @@
                 networkState.isHost = true;
                 networkState.hostId = networkState.localId;
                 
+                // ADD HOST TO PLAYERS ARRAY
+                gameState.players = [{ id: networkState.localId, name: gameState.currentPlayer.name }];
+                gameState.isHost = true;
+                
                 if (method === 'cloud-sync') {
-                    this.signaling = new JsonBlobSignaling();
+                    this.signaling = new NpointSignaling();
                     const initialData = {
                         peers: [{ id: networkState.localId, name: gameState.currentPlayer.name }],
                         signals: [],
+                        gameState: gameState // Include initial game state
                     };
                     const binId = await this.signaling.createRoom(initialData);
                     if (!binId) return { success: false };
@@ -1510,8 +1497,10 @@
                     return { success: true, roomCode: binId };
                 }
                 
-                const { offer } = await this.webrtc.createPeerConnection(null, true);
+                // For pure WebRTC, we need manual signal exchange
+                const { offer, pc } = await this.webrtc.createPeerConnection();
                 const offerString = JSON.stringify(offer);
+                // The room code is the offer itself for manual exchange
                 return { success: true, roomCode: btoa(offerString) };
             }
 
@@ -1520,7 +1509,7 @@
                 networkState.isHost = false;
 
                 if (method === 'cloud-sync') {
-                    this.signaling = new JsonBlobSignaling();
+                    this.signaling = new NpointSignaling();
                     networkState.signalingId = roomCode;
                     const roomData = await this.signaling.getRoomData(roomCode);
                     if (!roomData) {
@@ -1529,9 +1518,24 @@
                     }
 
                     const me = { id: networkState.localId, name: gameState.currentPlayer.name };
+                    // ADD PLAYER TO BOTH LOCAL AND REMOTE LISTS
                     if (!roomData.peers.find(p => p.id === me.id)) {
                         roomData.peers.push(me);
+                        
+                        // Update game state if it exists
+                        if (roomData.gameState) {
+                            if (!roomData.gameState.players.find(p => p.id === me.id)) {
+                                roomData.gameState.players.push(me);
+                            }
+                        }
+                        
                         await this.signaling.updateRoomData(roomCode, roomData);
+                    }
+                    
+                    // SYNC GAME STATE FROM ROOM DATA
+                    if (roomData.gameState) {
+                        Object.assign(gameState, roomData.gameState);
+                        gameState.currentPlayer = me; // Preserve current player reference
                     }
                     
                     this.startSignalingPoll();
@@ -1543,25 +1547,11 @@
                     return true;
                 }
                 
-                const offerString = atob(roomCode);
-                if(!offerString) return false;
-                const offer = safeJsonParse(offerString);
-                if(!offer) return false;
-
+                // Manual join
+                const offer = JSON.parse(atob(roomCode));
                 const { answer } = await this.webrtc.handleOfferFromPeer(null, offer);
                 const answerString = JSON.stringify(answer);
-                const answerCode = btoa(answerString);
-                
-                const hostAnswerCode = await manualRtcPrompt(
-                    'Your Answer Code',
-                    'Share this code with the host, then enter their final code below.',
-                    answerCode
-                );
-                
-                if(hostAnswerCode) {
-                    const hostAnswer = safeJsonParse(atob(hostAnswerCode));
-                    if(hostAnswer) this.webrtc.handleAnswerFromPeer(null, hostAnswer);
-                }
+                await customConfirm(`Send this answer back to the host: ${btoa(answerString)}`);
                 return true;
             }
 
@@ -1571,11 +1561,22 @@
                     if (!this.signaling || !networkState.signalingId) return;
                     const roomData = await this.signaling.getRoomData(networkState.signalingId);
                     if (roomData) {
+                        // Handle new peers
                         roomData.peers.forEach(peer => {
                             if (peer.id !== networkState.localId && !networkState.connections.has(peer.id)) {
                                 this.webrtc.connectToPeer(peer.id);
                             }
                         });
+                        
+                        // UPDATE GAME STATE FROM SIGNALING
+                        if (roomData.gameState && !networkState.isHost) {
+                            const oldPlayerCount = gameState.players.length;
+                            Object.assign(gameState, roomData.gameState);
+                            if (gameState.players.length !== oldPlayerCount) {
+                                updateLobby(); // Update UI when player count changes
+                            }
+                        }
+                        
                         const signalsForMe = roomData.signals.filter(s => s.to === networkState.localId);
                         if(signalsForMe.length > 0) {
                             signalsForMe.forEach(signal => this.webrtc.handleSignalingMessage(signal.from, signal.data));
@@ -1595,7 +1596,23 @@
                 }
             }
 
-            broadcast(data) { this.webrtc.broadcast(data); }
+            broadcast(data) { 
+                this.webrtc.broadcast(data); 
+                
+                // ALSO UPDATE CLOUD SIGNALING FOR PERSISTENCE
+                if (networkState.isHost && this.signaling && networkState.signalingId) {
+                    this.updateCloudGameState();
+                }
+            }
+
+            async updateCloudGameState() {
+                if (!this.signaling || !networkState.signalingId) return;
+                const roomData = await this.signaling.getRoomData(networkState.signalingId);
+                if (roomData) {
+                    roomData.gameState = { ...gameState, hand: null }; // Don't sync hands
+                    await this.signaling.updateRoomData(networkState.signalingId, roomData);
+                }
+            }
 
             disconnect() {
                 if (networkState.pollingInterval) clearInterval(networkState.pollingInterval);
@@ -1610,13 +1627,11 @@
                 this.networkManager = networkMgr;
             }
 
-            async createPeerConnection(peerId = null, isInitiator = false) {
+            async createPeerConnection(peerId) {
                 const pc = new RTCPeerConnection(rtcConfig);
                 pc.onicecandidate = event => {
-                    if (event.candidate) {
-                        if (networkState.method === 'cloud-sync') {
-                            this.networkManager.sendSignal(peerId, { type: 'candidate', candidate: event.candidate });
-                        }
+                    if (event.candidate && networkState.method === 'cloud-sync') {
+                        this.networkManager.sendSignal(peerId, { type: 'candidate', candidate: event.candidate });
                     }
                 };
                 pc.onconnectionstatechange = () => {
@@ -1625,21 +1640,19 @@
                     }
                 };
                 pc.ondatachannel = event => this.setupDataChannel(event.channel, peerId);
-                
-                if(isInitiator) {
-                    const dataChannel = pc.createDataChannel('game');
-                    this.setupDataChannel(dataChannel, peerId);
-                    const offer = await pc.createOffer();
-                    await pc.setLocalDescription(offer);
-                    return { pc, offer };
-                }
                 return pc;
             }
 
             async connectToPeer(peerId) {
                 if (networkState.connections.has(peerId)) return;
-                const { pc, offer } = await this.createPeerConnection(peerId, true);
+                const pc = await this.createPeerConnection(peerId);
                 networkState.connections.set(peerId, pc);
+                
+                const dataChannel = pc.createDataChannel('game');
+                this.setupDataChannel(dataChannel, peerId);
+
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
                 if (networkState.method === 'cloud-sync') {
                     this.networkManager.sendSignal(peerId, { type: 'offer', sdp: offer.sdp });
                 }
@@ -1651,6 +1664,7 @@
                     pc = await this.createPeerConnection(fromId);
                     networkState.connections.set(fromId, pc);
                 }
+
                 try {
                     if (data.type === 'offer') {
                         await pc.setRemoteDescription(new RTCSessionDescription(data));
@@ -1660,60 +1674,67 @@
                     } else if (data.type === 'answer') {
                         await pc.setRemoteDescription(new RTCSessionDescription(data));
                     } else if (data.type === 'candidate') {
-                        if(pc.remoteDescription) await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+                        await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
                     }
                 } catch (error) { console.error(`Error handling signal from ${fromId}:`, error); }
-            }
-            
-            async handleOfferFromPeer(peerId, offer) {
-                const pc = await this.createPeerConnection(peerId);
-                networkState.connections.set(peerId, pc);
-                await pc.setRemoteDescription(new RTCSessionDescription(offer));
-                const answer = await pc.createAnswer();
-                await pc.setLocalDescription(answer);
-                return { pc, answer };
-            }
-
-            async handleAnswerFromPeer(peerId, answer) {
-                const pc = networkState.connections.get(peerId);
-                if (pc) await pc.setRemoteDescription(new RTCSessionDescription(answer));
             }
 
             setupDataChannel(channel, peerId) {
                 channel.onopen = () => {
                     networkState.dataChannels.set(peerId, channel);
-                    if (networkState.isHost) {
-                        this.sendToPeer(peerId, { type: 'full-game-state', state: gameState });
+                    
+                    // ANNOUNCE PLAYER JOINED AND UPDATE STATE
+                    const player = gameState.players.find(p => p.id === peerId);
+                    if (player) {
+                        notifications.playerJoined(player.name);
                     }
-                    this.sendToPeer(peerId, { type: 'player-info', player: gameState.currentPlayer });
+                    
+                    if (networkState.isHost) {
+                        // Send complete game state to new player
+                        this.sendToPeer(peerId, { 
+                            type: 'full-game-state', 
+                            state: { ...gameState, hand: null } // Don't send other player's hand
+                        });
+                        
+                        // Broadcast player joined to all other players
+                        this.broadcast({ 
+                            type: 'player-joined', 
+                            player: gameState.players.find(p => p.id === peerId) 
+                        });
+                    }
+                    
+                    updateLobby(); // Update UI
                 };
-                channel.onmessage = event => this.handlePeerMessage(peerId, safeJsonParse(event.data));
+                channel.onmessage = event => this.handlePeerMessage(peerId, JSON.parse(event.data));
                 channel.onclose = () => this.handlePeerDisconnection(peerId);
                 channel.onerror = err => console.error(`Data channel error with ${peerId}:`, err);
             }
 
             handlePeerMessage(fromId, data) {
-                if(!data) return;
                 switch (data.type) {
-                    case 'chat-message': addChatMessage(data.playerName, data.message); break;
+                    case 'chat-message': 
+                        addChatMessage(data.playerName, data.message); 
+                        break;
                     case 'full-game-state':
                         if (!networkState.isHost) {
+                            const oldPlayerCount = gameState.players.length;
                             Object.assign(gameState, data.state);
-                            updateLobby();
+                            if (gameState.players.length !== oldPlayerCount) {
+                                updateLobby();
+                            }
                             updateGameUI();
                         }
                         break;
-                    case 'player-info':
-                        if (networkState.isHost) {
-                            if (!gameState.players.find(p => p.id === data.player.id)) {
-                                gameState.players.push(data.player);
-                                notifications.playerJoined(data.player.name);
-                                this.broadcast({ type: 'game-state', state: gameState });
-                                updateLobby();
-                            }
+                    case 'player-joined':
+                        if (!gameState.players.find(p => p.id === data.player.id)) {
+                            gameState.players.push(data.player);
+                            notifications.playerJoined(data.player.name);
+                            updateLobby();
                         }
                         break;
-                    case 'player-action': handlePlayerAction(fromId, data.action); break;
+                    case 'player-action': 
+                        handlePlayerAction(fromId, data.action); 
+                        break;
                 }
             }
             
@@ -1726,6 +1747,11 @@
                     notifications.playerLeft(player.name);
                     updateLobby();
                     updateScoreboard();
+                    
+                    // Update cloud state if host
+                    if (networkState.isHost && networkManager.signaling) {
+                        networkManager.updateCloudGameState();
+                    }
                 }
             }
 
@@ -1753,9 +1779,10 @@
 
         function initializeApp() {
             try {
-                console.log('Initializing Cards Against Humanity...');
+                console.log('Initializing Cards Against Humanity PWA...');
                 initializeCopyright();
                 initializeManagers();
+                initializePWA();
                 loadTheme();
                 loadDevMode();
                 loadSettings();
@@ -1783,11 +1810,21 @@
             networkManager = new NetworkManager();
         }
 
+        function initializePWA() {
+            if ('serviceWorker' in navigator) {
+                const swCode = `self.addEventListener('install', e => self.skipWaiting()); self.addEventListener('activate', e => e.waitUntil(clients.claim())); self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => new Response('Offline mode'))));`;
+                const swUrl = 'data:application/javascript,' + encodeURIComponent(swCode);
+                navigator.serviceWorker.register(swUrl, { scope: './' })
+                    .then(() => console.log('Service Worker registered successfully.'))
+                    .catch(e => console.error('SW registration failed:', e));
+            }
+        }
+
         function generateId() {
             return Math.random().toString(36).substr(2, 9);
         }
 
-        async function customConfirm(message, showCancel = true) {
+        async function customConfirm(message) {
             return new Promise(resolve => {
                 const modal = safeGetElement('confirmModal');
                 const msgEl = safeGetElement('confirmMessage');
@@ -1795,7 +1832,6 @@
                 const cancelBtn = safeGetElement('confirmCancel');
 
                 msgEl.textContent = message;
-                cancelBtn.style.display = showCancel ? 'inline-block' : 'none';
                 modal.classList.add('active');
 
                 okBtn.onclick = () => {
@@ -1808,61 +1844,27 @@
                 };
             });
         }
-        
-        async function manualRtcPrompt(title, message, code, showInput = true) {
-             return new Promise(resolve => {
-                const modal = safeGetElement('manualRtcModal');
-                safeGetElement('manualRtcTitle').textContent = title;
-                safeGetElement('manualRtcMessage').textContent = message;
-                safeGetElement('manualRtcCode').value = code;
-                safeGetElement('manualRtcInputGroup').style.display = showInput ? 'block' : 'none';
-                
-                modal.classList.add('active');
-
-                safeGetElement('manualRtcSubmit').onclick = () => {
-                    const input = safeGetElement('manualRtcInput').value;
-                    modal.classList.remove('active');
-                    resolve(input);
-                };
-                safeGetElement('manualRtcCancel').onclick = () => {
-                    modal.classList.remove('active');
-                    resolve(null);
-                };
-            });
-        }
-        
-        function copyManualCode() {
-            const code = safeGetElement('manualRtcCode').value;
-            navigator.clipboard.writeText(code).then(() => {
-                notifications.show('Code copied to clipboard!', 'success');
-            });
-        }
-
 
         function getMethodFromPrefix(prefix) {
             return Object.keys(METHOD_PREFIXES).find(key => METHOD_PREFIXES[key] === prefix);
         }
 
         function parseRoomCode(fullCode) {
-            if (typeof fullCode !== 'string') return { method: null, code: null };
+            if (typeof fullCode !== 'string') return { method: 'host-migration', code: fullCode };
 
-            if (fullCode.length > 20 && !fullCode.includes('-')) {
+            // Cloud-sync codes are long and don't have a prefix
+            if (fullCode.length > 10 && !fullCode.includes('-')) {
                 return { method: 'cloud-sync', code: fullCode };
             }
             
             const parts = fullCode.split('-');
-            if (parts.length > 0 && getMethodFromPrefix(parts[0])) {
-                const prefix = parts[0];
-                const code = parts.slice(1).join('-');
-                const method = getMethodFromPrefix(prefix);
-                return { method, code };
-            }
+            if (parts.length < 2) return { method: 'host-migration', code: fullCode };
 
-            if (fullCode.length > 20) {
-                 return { method: 'pure-webrtc', code: fullCode };
-            }
+            const prefix = parts[0];
+            const code = parts.slice(1).join('-');
+            const method = getMethodFromPrefix(prefix);
             
-            return { method: 'cloud-sync', code: fullCode };
+            return { method: method || 'host-migration', code: code };
         }
 
 
@@ -1875,29 +1877,16 @@
             
             const method = safeGetElement('connectionMethod').value;
             gameState.currentPlayer = { id: networkState.localId, name: name };
-            gameState.players.push(gameState.currentPlayer);
             showConnectionProgress('Creating room...');
             
             const { success, roomCode } = await networkManager.createRoom(method);
             
             if (success) {
-                const prefix = METHOD_PREFIXES[method] || 'C';
+                const prefix = METHOD_PREFIXES[method] || 'H';
                 const fullRoomCode = method === 'cloud-sync' ? roomCode : `${prefix}-${roomCode}`;
                 gameState.room = fullRoomCode;
                 safeGetElement('roomCode').value = fullRoomCode;
                 savePlayerName(name);
-                
-                if (method === 'pure-webrtc') {
-                    const answerCode = await manualRtcPrompt('Room Created (Manual)', 'Share this code with the joining player, then enter their answer code below.', roomCode);
-                    if(answerCode) {
-                        const answer = safeJsonParse(atob(answerCode));
-                        if(answer) networkManager.webrtc.handleAnswerFromPeer(null, answer);
-                    } else {
-                        leaveRoom();
-                        return;
-                    }
-                }
-
                 hideConnectionProgress();
                 switchScreen('lobbyScreen');
                 updateLobby();
@@ -1946,7 +1935,11 @@
 
         function leaveRoom() {
             networkManager.disconnect();
-            Object.assign(gameState, { phase: 'home', players: [], isHost: false, room: null });
+            Object.assign(gameState, { 
+                phase: 'home', players: [], isHost: false, room: null,
+                currentRound: 1, judge: null, blackCard: null, submissions: [], 
+                selectedCards: [], scores: {}
+            });
             networkState.isHost = false;
             networkState.hostId = null;
             switchScreen('homeScreen');
@@ -1967,9 +1960,10 @@
             dealInitialCards();
             startRound();
             
-            networkManager.broadcast({ type: 'game-state', state: { ...gameState, hand: null } });
+            networkManager.broadcast({ type: 'game-started', state: { ...gameState, hand: null } });
             
             switchScreen('gameScreen');
+            notifications.gameStarted();
         }
 
         function startRound() {
@@ -1979,6 +1973,12 @@
             gameState.selectedCards = [];
             updateGameUI();
             safeSetTextContent('gameStatus', gameState.judge === gameState.currentPlayer.id ? 'You are the judge! Wait for submissions.' : `Submit ${gameState.blackCard.pick} card(s)`);
+            
+            if (gameState.judge === gameState.currentPlayer.id) {
+                notifications.judgeSelection();
+            } else {
+                notifications.yourTurn();
+            }
         }
 
         function nextRound() {
@@ -1987,7 +1987,7 @@
             gameState.judge = gameState.players[(currentJudgeIndex + 1) % gameState.players.length].id;
             startRound();
             if (networkState.isHost) {
-                networkManager.broadcast({ type: 'game-state', state: { ...gameState, hand: null } });
+                networkManager.broadcast({ type: 'next-round', state: { ...gameState, hand: null } });
             }
         }
         
@@ -2030,6 +2030,7 @@
             
             networkManager.broadcast({ type: 'player-action', action: { type: 'submit-cards', ...submission } });
             handlePlayerAction(gameState.currentPlayer.id, { type: 'submit-cards', ...submission });
+            notifications.cardsSubmitted();
         }
 
         function handlePlayerAction(fromId, action) {
@@ -2040,14 +2041,16 @@
                     checkAllSubmissionsReceived();
                 }
             } else if (action.type === 'judge-selection') {
-                // This is now handled by the host broadcasting the new state
+                if (networkState.isHost && gameState.judge === gameState.currentPlayer.id) {
+                    selectWinner(action.winnerIndex);
+                }
             }
         }
 
         function checkAllSubmissionsReceived() {
             const nonJudgePlayers = gameState.players.filter(p => p.id !== gameState.judge);
             if (gameState.submissions.length >= nonJudgePlayers.length) {
-                safeSetTextContent('gameStatus', networkState.isHost ? 'Choose the funniest answer!' : 'Judge is choosing...');
+                safeSetTextContent('gameStatus', networkState.isHost && gameState.judge === gameState.currentPlayer.id ? 'Choose the funniest answer!' : 'Judge is choosing...');
             }
         }
 
@@ -2058,13 +2061,14 @@
             gameState.scores[winner.player]++;
             const winnerName = gameState.players.find(p => p.id === winner.player)?.name || 'Unknown';
             
+            networkManager.broadcast({ type: 'round-winner', winner: winner.player, winnerName: winnerName });
             notifications.roundWinner(winnerName);
             
             if (gameState.scores[winner.player] >= gameState.winningScore) {
                 setTimeout(() => {
                     notifications.show(`${winnerName} wins the game!`, 'success');
                     networkManager.broadcast({ type: 'game-over', winner: winnerName });
-                    leaveRoom();
+                    setTimeout(() => leaveRoom(), 5000);
                 }, 3000);
             } else {
                 setTimeout(() => nextRound(), 3000);
@@ -2150,7 +2154,11 @@
                 playerElement.innerHTML = `<strong>${player.name}</strong> ${player.id === gameState.currentPlayer.id ? '(You)' : ''} ${networkState.hostId === player.id ? '(Host)' : ''}`;
                 playersElement.appendChild(playerElement);
             });
-            safeGetElement('startGameBtn').disabled = !networkState.isHost || gameState.players.length < 2;
+            
+            const startBtn = safeGetElement('startGameBtn');
+            startBtn.disabled = !networkState.isHost || gameState.players.length < 2;
+            startBtn.textContent = gameState.players.length < 2 ? `Start Game (Need ${2 - gameState.players.length} more players)` : 'Start Game';
+            
             updateExpansionSelector();
         }
 
@@ -2416,8 +2424,7 @@
                 const reader = new FileReader();
                 reader.onload = e => {
                     try {
-                        const imported = safeJsonParse(e.target.result);
-                        if(!imported) throw new Error("Invalid JSON file");
+                        const imported = JSON.parse(e.target.result);
                         const existing = getCustomCards();
                         if (imported.black) existing.black.push(...imported.black);
                         if (imported.white) existing.white.push(...imported.white);
@@ -2430,6 +2437,11 @@
             });
             safeGetElement('newCardType').addEventListener('change', function() {
                 safeGetElement('pickGroup').style.display = this.value === 'black' ? 'block' : 'none';
+            });
+            
+            // Add chat input enter key listener
+            safeGetElement('chatInput').addEventListener('keypress', e => {
+                if (e.key === 'Enter') sendMessage();
             });
         }
         
@@ -2476,10 +2488,9 @@
         function safeGetElement(id) { return document.getElementById(id); }
         function safeSetTextContent(id, text) { const el = safeGetElement(id); if (el) el.textContent = text; }
         function safeSetInnerHTML(id, html) { const el = safeGetElement(id); if (el) el.innerHTML = html; }
-        function safeLocalStorageGet(key, def = null) { try { const item = localStorage.getItem(key); return item === null ? def : item; } catch { return def; } }
+        function safeLocalStorageGet(key, def = null) { try { return localStorage.getItem(key) ?? def; } catch { return def; } }
         function safeLocalStorageSet(key, val) { try { localStorage.setItem(key, val); } catch (e) { console.error(e); } }
-        function safeJsonParse(str, def = null) { try { if (typeof str === 'string' && str.length > 0) return JSON.parse(str); } catch (e) { console.error("JSON parse error:", e); } return def; }
-        function safeLocalStorageGetJSON(key, def = {}) { const item = safeLocalStorageGet(key); return safeJsonParse(item, def) ?? def; }
+        function safeLocalStorageGetJSON(key, def = {}) { try { return JSON.parse(safeLocalStorageGet(key)) ?? def; } catch { return def; } }
         function safeLocalStorageSetJSON(key, val) { safeLocalStorageSet(key, JSON.stringify(val)); }
 
         function loadPlayerName() { safeGetElement('playerName').value = safeLocalStorageGet('cah-player-name', 'Player'); }
@@ -2503,7 +2514,7 @@
             console.log("%cWebsite: https://tylerpresident.com | https://fakegov.com", "color: #4CAF50; font-size: 14px;");
         }
         function toggleAttribution() { safeGetElement('attributionFooter').classList.toggle('minimized'); }
-        function initializeAttribution() { /* Now minimized by default in HTML */ }
+        function initializeAttribution() { if (window.innerWidth <= 768) safeGetElement('attributionFooter').classList.add('minimized'); }
         function protectAttribution() {
             setInterval(() => {
                 const footer = safeGetElement('attributionFooter');
