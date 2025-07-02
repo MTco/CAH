@@ -1419,23 +1419,24 @@
             }
         }
 
-        class NpointSignaling {
+        class JsonBlobSignaling {
             constructor() {
-                this.baseUrl = 'https://api.npoint.io/';
+                this.baseUrl = 'https://jsonblob.com/api/jsonBlob';
             }
 
             async createRoom(initialData) {
                 try {
                     const response = await fetch(this.baseUrl, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                         body: JSON.stringify(initialData)
                     });
                     if (!response.ok) throw new Error(`API error: ${response.statusText}`);
-                    const result = await response.json();
-                    return result.id;
+                    const location = response.headers.get('Location');
+                    if (!location) throw new Error('Location header not found in response');
+                    return location.split('/').pop(); // Return only the ID
                 } catch (error) {
-                    console.error('Failed to create npoint.io room:', error);
+                    console.error('Failed to create jsonblob.com room:', error);
                     notifications.show('Could not create signaling room.', 'error');
                     return null;
                 }
@@ -1443,7 +1444,7 @@
 
             async getRoomData(binId) {
                 try {
-                    const response = await fetch(`${this.baseUrl}${binId}`);
+                    const response = await fetch(`${this.baseUrl}/${binId}`);
                     if (response.status === 404) return null;
                     if (!response.ok) throw new Error(`API error: ${response.statusText}`);
                     return await response.json();
@@ -1455,7 +1456,7 @@
 
             async updateRoomData(binId, data) {
                 try {
-                    const response = await fetch(`${this.baseUrl}${binId}`, {
+                    const response = await fetch(`${this.baseUrl}/${binId}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(data)
@@ -1480,7 +1481,7 @@
                 networkState.hostId = networkState.localId;
                 
                 if (method === 'cloud-sync') {
-                    this.signaling = new NpointSignaling();
+                    this.signaling = new JsonBlobSignaling();
                     const initialData = {
                         peers: [{ id: networkState.localId, name: gameState.currentPlayer.name }],
                         signals: [],
@@ -1502,7 +1503,7 @@
                 networkState.isHost = false;
 
                 if (method === 'cloud-sync') {
-                    this.signaling = new NpointSignaling();
+                    this.signaling = new JsonBlobSignaling();
                     networkState.signalingId = roomCode;
                     const roomData = await this.signaling.getRoomData(roomCode);
                     if (!roomData) {
@@ -1722,7 +1723,6 @@
                 console.log('Initializing Cards Against Humanity PWA...');
                 initializeCopyright();
                 initializeManagers();
-                // initializePWA(); // Removed to prevent SW errors
                 loadTheme();
                 loadDevMode();
                 loadSettings();
