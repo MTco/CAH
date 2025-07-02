@@ -383,10 +383,10 @@ function toggleDevMode(forceState, quiet = false) {
 
 function loadPlayerName() { utils.safeGetElement('playerName').value = utils.safeLocalStorageGet('cah-player-name', 'Player'); }
 function savePlayerName(name) { utils.safeLocalStorageSet('cah-player-name', name); }
-function getCustomCards() { return utils.safeLocalStorageGetJSON('cah-custom-cards', { black: [], white: [] }); }
+export function getCustomCards() { return utils.safeLocalStorageGetJSON('cah-custom-cards', { black: [], white: [] }); }
 function saveCustomCards(cards) { utils.safeLocalStorageSetJSON('cah-custom-cards', cards); }
 function loadCustomCards() { if (!localStorage.getItem('cah-custom-cards')) saveCustomCards({ black: [], white: [] }); }
-function getSettings() { return utils.safeLocalStorageGetJSON('cah-settings', { enableCustomCards: true }); }
+export function getSettings() { return utils.safeLocalStorageGetJSON('cah-settings', { enableCustomCards: true }); }
 function loadSettings() {
     if (!localStorage.getItem('cah-settings')) utils.safeLocalStorageSetJSON('cah-settings', { enableCustomCards: true });
     appState.notifications = utils.safeLocalStorageGetJSON('cah-notifications', { enabled: true, audio: true, visual: true });
