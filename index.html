@@ -1527,13 +1527,18 @@
                 
                 const offerString = atob(roomCode);
                 if(!offerString) return false;
-                const offer = JSON.parse(offerString);
+                const offer = safeJsonParse(offerString);
+                if(!offer) return false;
+
                 const { answer } = await this.webrtc.handleOfferFromPeer(null, offer);
                 const answerString = JSON.stringify(answer);
                 const answerCode = btoa(answerString);
-                await customConfirm(`Send this answer code back to the host: ${answerCode}`);
-                const hostAnswer = prompt("Enter the host's answer code:");
-                if(hostAnswer) this.webrtc.handleAnswerFromPeer(null, JSON.parse(atob(hostAnswer)));
+                const hostAnswerCode = await prompt(`Send this answer code back to the host, then enter their answer code below:`, answerCode);
+                
+                if(hostAnswerCode) {
+                    const hostAnswer = safeJsonParse(atob(hostAnswerCode));
+                    if(hostAnswer) this.webrtc.handleAnswerFromPeer(null, hostAnswer);
+                }
                 return true;
             }
 
@@ -1658,12 +1663,13 @@
                         this.sendToPeer(peerId, { type: 'full-game-state', state: gameState });
                     }
                 };
-                channel.onmessage = event => this.handlePeerMessage(peerId, JSON.parse(event.data));
+                channel.onmessage = event => this.handlePeerMessage(peerId, safeJsonParse(event.data));
                 channel.onclose = () => this.handlePeerDisconnection(peerId);
                 channel.onerror = err => console.error(`Data channel error with ${peerId}:`, err);
             }
 
             handlePeerMessage(fromId, data) {
+                if(!data) return;
                 switch (data.type) {
                     case 'chat-message': addChatMessage(data.playerName, data.message); break;
                     case 'full-game-state':
@@ -1716,7 +1722,7 @@
                 console.log('Initializing Cards Against Humanity PWA...');
                 initializeCopyright();
                 initializeManagers();
-                initializePWA();
+                // initializePWA(); // Removed to prevent SW errors
                 loadTheme();
                 loadDevMode();
                 loadSettings();
@@ -1742,17 +1748,6 @@
             qrGenerator = new QRCodeGenerator();
             qrScanner = new QRCodeScanner();
             networkManager = new NetworkManager();
-        }
-
-        function initializePWA() {
-            if ('serviceWorker' in navigator) {
-                const swCode = `self.addEventListener('install', e => self.skipWaiting()); self.addEventListener('activate', e => e.waitUntil(clients.claim())); self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => new Response('Offline mode'))));`;
-                const blob = new Blob([swCode], { type: 'application/javascript' });
-                const swUrl = URL.createObjectURL(blob);
-                navigator.serviceWorker.register(swUrl)
-                    .then(() => console.log('Service Worker registered successfully.'))
-                    .catch(e => console.error('SW registration failed:', e));
-            }
         }
 
         function generateId() {
@@ -2339,7 +2334,8 @@
                 const reader = new FileReader();
                 reader.onload = e => {
                     try {
-                        const imported = JSON.parse(e.target.result);
+                        const imported = safeJsonParse(e.target.result);
+                        if(!imported) throw new Error("Invalid JSON file");
                         const existing = getCustomCards();
                         if (imported.black) existing.black.push(...imported.black);
                         if (imported.white) existing.white.push(...imported.white);
@@ -2400,7 +2396,8 @@
         function safeSetInnerHTML(id, html) { const el = safeGetElement(id); if (el) el.innerHTML = html; }
         function safeLocalStorageGet(key, def = null) { try { const item = localStorage.getItem(key); return item === null ? def : item; } catch { return def; } }
         function safeLocalStorageSet(key, val) { try { localStorage.setItem(key, val); } catch (e) { console.error(e); } }
-        function safeLocalStorageGetJSON(key, def = {}) { try { const item = safeLocalStorageGet(key); return item ? JSON.parse(item) : def; } catch { return def; } }
+        function safeJsonParse(str, def = null) { try { if (typeof str === 'string' && str.length > 0) return JSON.parse(str); } catch (e) { console.error("JSON parse error:", e); } return def; }
+        function safeLocalStorageGetJSON(key, def = {}) { const item = safeLocalStorageGet(key); return safeJsonParse(item, def) ?? def; }
         function safeLocalStorageSetJSON(key, val) { safeLocalStorageSet(key, JSON.stringify(val)); }
 
         function loadPlayerName() { safeGetElement('playerName').value = safeLocalStorageGet('cah-player-name', 'Player'); }
