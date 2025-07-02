@@ -468,6 +468,29 @@
         .dev-mode-toggle:hover {
             background: #da190b;
         }
+        .debug-panel {
+            position: fixed;
+            top: 160px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.95);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            max-width: 300px;
+            z-index: 1001;
+            font-size: 12px;
+            border: 2px solid var(--accent-color);
+        }
+        .debug-content h4 {
+            margin: 0 0 10px 0;
+            color: var(--accent-color);
+        }
+        .debug-info-item {
+            margin: 5px 0;
+            padding: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
         .player-list {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -782,6 +805,14 @@
     <div class="connection-status" id="connectionStatus">Offline</div>
     <div class="theme-toggle" id="themeToggle" onclick="showThemeSelector()">🎨 Midnight Gaming</div>
     <div class="dev-mode-toggle" id="devModeToggle" onclick="toggleDevMode()">DEV</div>
+    <div class="debug-panel" id="debugPanel" style="display: none;">
+        <div class="debug-content">
+            <h4>🔧 Connection Debug</h4>
+            <div id="debugInfo"></div>
+            <button class="btn btn-secondary" onclick="exportDebugInfo()">Export Debug</button>
+            <button class="btn btn-danger" onclick="toggleDebugPanel()">Close</button>
+        </div>
+    </div>
     <div class="notification" id="notification"></div>
 
     <!-- Home Screen -->
@@ -1095,8 +1126,26 @@
         const rtcConfig = {
             iceServers: [
                 { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' }
-            ]
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' },
+                // Free TURN servers for NAT traversal
+                { 
+                    urls: 'turn:openrelay.metered.ca:80',
+                    username: 'openrelayproject',
+                    credential: 'openrelayproject'
+                },
+                { 
+                    urls: 'turn:openrelay.metered.ca:443',
+                    username: 'openrelayproject',
+                    credential: 'openrelayproject'
+                },
+                { 
+                    urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+                    username: 'openrelayproject',
+                    credential: 'openrelayproject'
+                }
+            ],
+            iceCandidatePoolSize: 10
         };
 
         const METHOD_PREFIXES = {
@@ -1629,18 +1678,61 @@
 
             async createPeerConnection(peerId) {
                 const pc = new RTCPeerConnection(rtcConfig);
+                
                 pc.onicecandidate = event => {
                     if (event.candidate && networkState.method === 'cloud-sync') {
-                        this.networkManager.sendSignal(peerId, { type: 'candidate', candidate: event.candidate });
+                        this.networkManager.sendSignal(peerId, { 
+                            type: 'candidate', 
+                            candidate: event.candidate 
+                        });
                     }
                 };
+                
                 pc.onconnectionstatechange = () => {
+                    console.log(`Connection state with ${peerId}: ${pc.connectionState}`);
                     if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected' || pc.connectionState === 'closed') {
                         this.handlePeerDisconnection(peerId);
+                    } else if (pc.connectionState === 'connected') {
+                        console.log(`Successfully connected to ${peerId}`);
+                        updateConnectionStatus(`Connected (${getMethodDisplayName(networkState.method)})`);
                     }
                 };
+                
+                pc.oniceconnectionstatechange = () => {
+                    console.log(`ICE connection state with ${peerId}: ${pc.iceConnectionState}`);
+                    if (pc.iceConnectionState === 'failed') {
+                        console.error(`ICE connection failed with ${peerId}. Check TURN servers.`);
+                        notifications.show(`Connection failed with peer. Retrying...`, 'error');
+                        // Attempt ICE restart
+                        setTimeout(() => {
+                            if (pc.connectionState !== 'connected') {
+                                this.restartIce(pc, peerId);
+                            }
+                        }, 2000);
+                    }
+                };
+                
                 pc.ondatachannel = event => this.setupDataChannel(event.channel, peerId);
                 return pc;
+            }
+
+            async restartIce(pc, peerId) {
+                try {
+                    console.log(`Attempting ICE restart with ${peerId}`);
+                    const offer = await pc.createOffer({ iceRestart: true });
+                    await pc.setLocalDescription(offer);
+                    if (networkState.method === 'cloud-sync') {
+                        this.networkManager.sendSignal(peerId, { 
+                            type: 'offer', 
+                            offer: {
+                                type: offer.type,
+                                sdp: offer.sdp
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error(`ICE restart failed for ${peerId}:`, error);
+                }
             }
 
             async connectToPeer(peerId) {
@@ -1651,10 +1743,22 @@
                 const dataChannel = pc.createDataChannel('game');
                 this.setupDataChannel(dataChannel, peerId);
 
-                const offer = await pc.createOffer();
-                await pc.setLocalDescription(offer);
-                if (networkState.method === 'cloud-sync') {
-                    this.networkManager.sendSignal(peerId, { type: 'offer', sdp: offer.sdp });
+                try {
+                    const offer = await pc.createOffer();
+                    await pc.setLocalDescription(offer);
+                    if (networkState.method === 'cloud-sync') {
+                        // Send complete offer descriptor
+                        this.networkManager.sendSignal(peerId, { 
+                            type: 'offer', 
+                            offer: {
+                                type: offer.type,
+                                sdp: offer.sdp
+                            }
+                        });
+                    }
+                } catch (error) {
+                    console.error(`Failed to create offer for ${peerId}:`, error);
+                    networkState.connections.delete(peerId);
                 }
             }
 
@@ -1665,23 +1769,50 @@
                     networkState.connections.set(fromId, pc);
                 }
 
+                if (!pc) {
+                    console.error(`No peer connection found for ${fromId}`);
+                    return;
+                }
+
                 try {
-                    if (data.type === 'offer') {
-                        await pc.setRemoteDescription(new RTCSessionDescription(data));
+                    if (data.type === 'offer' && data.offer) {
+                        await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
                         const answer = await pc.createAnswer();
                         await pc.setLocalDescription(answer);
-                        this.networkManager.sendSignal(fromId, { type: 'answer', sdp: answer.sdp });
-                    } else if (data.type === 'answer') {
-                        await pc.setRemoteDescription(new RTCSessionDescription(data));
-                    } else if (data.type === 'candidate') {
+                        this.networkManager.sendSignal(fromId, { 
+                            type: 'answer', 
+                            answer: {
+                                type: answer.type,
+                                sdp: answer.sdp
+                            }
+                        });
+                    } else if (data.type === 'answer' && data.answer) {
+                        await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+                    } else if (data.type === 'candidate' && data.candidate) {
                         await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+                    } else {
+                        console.warn(`Invalid signaling data from ${fromId}:`, data);
                     }
-                } catch (error) { console.error(`Error handling signal from ${fromId}:`, error); }
+                } catch (error) { 
+                    console.error(`Error handling signal from ${fromId}:`, error);
+                    // Clean up failed connection
+                    networkState.connections.delete(fromId);
+                    networkState.dataChannels.delete(fromId);
+                }
             }
 
             setupDataChannel(channel, peerId) {
                 channel.onopen = () => {
+                    console.log(`Data channel opened with ${peerId}`);
                     networkState.dataChannels.set(peerId, channel);
+                    
+                    // Update connection status
+                    const connectedPeers = networkState.dataChannels.size;
+                    if (networkState.isHost) {
+                        updateConnectionStatus(`Host (${connectedPeers} peers connected)`);
+                    } else {
+                        updateConnectionStatus(`Connected (${getMethodDisplayName(networkState.method)})`);
+                    }
                     
                     // ANNOUNCE PLAYER JOINED AND UPDATE STATE
                     const player = gameState.players.find(p => p.id === peerId);
@@ -1705,9 +1836,24 @@
                     
                     updateLobby(); // Update UI
                 };
-                channel.onmessage = event => this.handlePeerMessage(peerId, JSON.parse(event.data));
-                channel.onclose = () => this.handlePeerDisconnection(peerId);
-                channel.onerror = err => console.error(`Data channel error with ${peerId}:`, err);
+                
+                channel.onmessage = event => {
+                    try {
+                        this.handlePeerMessage(peerId, JSON.parse(event.data));
+                    } catch (error) {
+                        console.error(`Failed to parse message from ${peerId}:`, error);
+                    }
+                };
+                
+                channel.onclose = () => {
+                    console.log(`Data channel closed with ${peerId}`);
+                    this.handlePeerDisconnection(peerId);
+                };
+                
+                channel.onerror = err => {
+                    console.error(`Data channel error with ${peerId}:`, err);
+                    this.handlePeerDisconnection(peerId);
+                };
             }
 
             handlePeerMessage(fromId, data) {
@@ -1878,25 +2024,39 @@
             const method = safeGetElement('connectionMethod').value;
             gameState.currentPlayer = { id: networkState.localId, name: name };
             showConnectionProgress('Creating room...');
+            updateConnectionStatus('Creating...');
             
-            const { success, roomCode } = await networkManager.createRoom(method);
-            
-            if (success) {
-                const prefix = METHOD_PREFIXES[method] || 'H';
-                const fullRoomCode = method === 'cloud-sync' ? roomCode : `${prefix}-${roomCode}`;
-                gameState.room = fullRoomCode;
-                safeGetElement('roomCode').value = fullRoomCode;
-                savePlayerName(name);
+            try {
+                const { success, roomCode } = await networkManager.createRoom(method);
+                
+                if (success) {
+                    const prefix = METHOD_PREFIXES[method] || 'H';
+                    const fullRoomCode = method === 'cloud-sync' ? roomCode : `${prefix}-${roomCode}`;
+                    gameState.room = fullRoomCode;
+                    safeGetElement('roomCode').value = fullRoomCode;
+                    savePlayerName(name);
+                    hideConnectionProgress();
+                    switchScreen('lobbyScreen');
+                    updateLobby();
+                    updateConnectionStatus(`Host (${getMethodDisplayName(method)})`);
+                    generateRoomQR(fullRoomCode);
+                    notifications.show('Room created! Share the code with friends.', 'success');
+                    
+                    // Enable debug mode for hosts by default to help troubleshoot
+                    if (!gameState.devMode) {
+                        gameState.devMode = true;
+                        toggleDevMode(true, true);
+                    }
+                } else {
+                    hideConnectionProgress();
+                    notifications.show('Failed to create room. Please try again.', 'error');
+                    updateConnectionStatus('Failed');
+                }
+            } catch (error) {
+                console.error('Create room error:', error);
                 hideConnectionProgress();
-                switchScreen('lobbyScreen');
-                updateLobby();
-                updateConnectionStatus(`Host (${getMethodDisplayName(method)})`);
-                generateRoomQR(fullRoomCode);
-                notifications.show('Room created! Share the code.', 'success');
-            } else {
-                hideConnectionProgress();
-                notifications.show('Failed to create room.', 'error');
-                updateConnectionStatus('Failed');
+                updateConnectionStatus('Error');
+                notifications.show('Error creating room. Check your connection.', 'error');
             }
         }
 
@@ -1919,18 +2079,57 @@
             gameState.room = fullRoomCode;
             
             showConnectionProgress(`Joining room with ${getMethodDisplayName(method)}...`);
+            updateConnectionStatus('Connecting...');
             
-            const success = await networkManager.joinRoom(method, code);
-            if (success) {
-                savePlayerName(name);
+            try {
+                const success = await networkManager.joinRoom(method, code);
+                if (success) {
+                    savePlayerName(name);
+                    hideConnectionProgress();
+                    switchScreen('lobbyScreen');
+                    updateLobby();
+                    updateConnectionStatus(`Connected (${getMethodDisplayName(method)})`);
+                    
+                    // Set a timeout to check if WebRTC actually connects
+                    setTimeout(() => {
+                        if (networkState.dataChannels.size === 0 && !networkState.isHost) {
+                            notifications.show('WebRTC connection taking longer than expected. Check your network or try a different method.', 'error');
+                            updateConnectionStatus('WebRTC Connection Issues');
+                            
+                            // Show troubleshooting tips
+                            setTimeout(() => {
+                                if (networkState.dataChannels.size === 0) {
+                                    showConnectionTroubleshooting();
+                                }
+                            }, 10000);
+                        }
+                    }, 8000);
+                } else {
+                    hideConnectionProgress();
+                    updateConnectionStatus('Failed');
+                }
+            } catch (error) {
+                console.error('Join room error:', error);
                 hideConnectionProgress();
-                switchScreen('lobbyScreen');
-                updateLobby();
-                updateConnectionStatus(`Connected (${getMethodDisplayName(method)})`);
-            } else {
-                hideConnectionProgress();
-                updateConnectionStatus('Failed');
+                updateConnectionStatus('Error');
+                notifications.show('Failed to join room. Please try again.', 'error');
             }
+        }
+
+        function showConnectionTroubleshooting() {
+            customConfirm(`Connection Issues Detected:
+
+• Your network may be blocking peer-to-peer connections
+• Try refreshing the page and using a different room method
+• Consider using a VPN if on a corporate/school network
+• Check that both devices are on stable internet connections
+
+Would you like to try creating a new room instead?`).then(createNew => {
+                if (createNew) {
+                    leaveRoom();
+                    safeGetElement('connectionMethod').value = 'cloud-sync'; // Use most reliable method
+                }
+            });
         }
 
         function leaveRoom() {
@@ -2209,9 +2408,42 @@
             const el = safeGetElement('connectionStatus');
             el.textContent = status;
             el.className = 'connection-status';
-            if (status.includes('Connected') || status.includes('Host')) el.classList.add('connected');
-            else if (status.includes('...')) el.classList.add('connecting');
-            else el.classList.add('disconnected');
+            if (status.includes('Connected') || status.includes('Host')) {
+                el.classList.add('connected');
+            } else if (status.includes('...') || status.includes('Connecting')) {
+                el.classList.add('connecting');
+            } else if (status.includes('Failed') || status.includes('Error')) {
+                el.classList.add('disconnected');
+                // Auto-retry connection after a delay
+                if (gameState.room && !networkState.isHost) {
+                    setTimeout(() => {
+                        if (!networkState.dataChannels.size) {
+                            console.log('Auto-retrying connection...');
+                            rejoinRoom();
+                        }
+                    }, 5000);
+                }
+            } else {
+                el.classList.add('disconnected');
+            }
+        }
+
+        async function rejoinRoom() {
+            if (!gameState.room || !gameState.currentPlayer) return;
+            
+            console.log('Attempting to rejoin room...');
+            updateConnectionStatus('Reconnecting...');
+            
+            const { method, code } = parseRoomCode(gameState.room);
+            const success = await networkManager.joinRoom(method, code);
+            
+            if (success) {
+                updateConnectionStatus(`Reconnected (${getMethodDisplayName(method)})`);
+                notifications.show('Reconnected successfully!', 'success');
+            } else {
+                updateConnectionStatus('Reconnection Failed');
+                notifications.show('Failed to reconnect. Try refreshing.', 'error');
+            }
         }
 
         function showConnectionProgress(message) {
@@ -2405,14 +2637,88 @@
             if (gameState.devMode) {
                 devToggle.textContent = 'DEV ✓';
                 devToggle.style.background = '#27ae60';
-                if (!quiet) notifications.show('Dev mode enabled', 'success');
+                devToggle.onclick = () => toggleDebugPanel();
+                if (!quiet) notifications.show('Dev mode enabled - Click DEV for debug panel', 'success');
             } else {
                 devToggle.textContent = 'DEV';
                 devToggle.style.background = 'var(--danger-color)';
+                devToggle.onclick = () => toggleDevMode();
+                safeGetElement('debugPanel').style.display = 'none';
                 if (!quiet) notifications.show('Dev mode disabled', 'info');
             }
             if (gameState.phase === 'lobby') updateExpansionSelector();
             safeLocalStorageSet('cah-dev-mode', gameState.devMode);
+        }
+
+        function toggleDebugPanel() {
+            const panel = safeGetElement('debugPanel');
+            if (panel.style.display === 'none') {
+                panel.style.display = 'block';
+                updateDebugInfo();
+                // Update debug info every 2 seconds
+                if (window.debugInterval) clearInterval(window.debugInterval);
+                window.debugInterval = setInterval(updateDebugInfo, 2000);
+            } else {
+                panel.style.display = 'none';
+                if (window.debugInterval) clearInterval(window.debugInterval);
+            }
+        }
+
+        function updateDebugInfo() {
+            const debugElement = safeGetElement('debugInfo');
+            if (!debugElement) return;
+
+            const connections = Array.from(networkState.connections.entries()).map(([id, pc]) => ({
+                id: id.substring(0, 8),
+                connection: pc.connectionState,
+                ice: pc.iceConnectionState,
+                gathering: pc.iceGatheringState
+            }));
+
+            const debugData = {
+                method: networkState.method,
+                isHost: networkState.isHost,
+                localId: networkState.localId.substring(0, 8),
+                roomId: networkState.signalingId?.substring(0, 8) || 'N/A',
+                players: gameState.players.length,
+                connections: connections.length,
+                dataChannels: networkState.dataChannels.size,
+                connectionDetails: connections
+            };
+
+            debugElement.innerHTML = Object.entries(debugData).map(([key, value]) => {
+                if (key === 'connectionDetails') {
+                    return `<div class="debug-info-item"><strong>Connections:</strong><br>${
+                        value.map(c => `${c.id}: ${c.connection}/${c.ice}`).join('<br>')
+                    }</div>`;
+                }
+                return `<div class="debug-info-item"><strong>${key}:</strong> ${JSON.stringify(value)}</div>`;
+            }).join('');
+        }
+
+        function exportDebugInfo() {
+            const debugData = {
+                timestamp: new Date().toISOString(),
+                gameState: { ...gameState, hand: null }, // Don't export hand
+                networkState: {
+                    method: networkState.method,
+                    isHost: networkState.isHost,
+                    localId: networkState.localId,
+                    connections: Array.from(networkState.connections.keys()),
+                    dataChannels: Array.from(networkState.dataChannels.keys())
+                },
+                userAgent: navigator.userAgent,
+                url: window.location.href
+            };
+
+            const blob = new Blob([JSON.stringify(debugData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `cah-debug-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            notifications.show('Debug info exported!', 'success');
         }
 
         // --- INITIALIZATION & HELPERS ---
