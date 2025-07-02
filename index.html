@@ -1,0 +1,2437 @@
+<!DOCTYPE html>
+<!-- 
+    Cards Against Humanity Online
+    © All Rights Reserved - Mathew Tyler
+    Website: https://tylerpresident.com | https://fakegov.com
+    
+    This implementation is the exclusive property of Mathew Tyler.
+    All code, design, and implementation rights are reserved.
+    Unauthorized reproduction, distribution, or modification is strictly prohibited.
+    
+    This copyright notice and attribution footer cannot be removed or modified.
+-->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cards Against Humanity Online - © Mathew Tyler</title>
+    <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiQ2FyZHMgQWdhaW5zdCBIdW1hbml0eSIsInNob3J0X25hbWUiOiJDQUgiLCJkZXNjcmlwdGlvbiI6IkEgZGVjZW50cmFsaXplZCBDYXJkcyBBZ2FpbnN0IEh1bWFuaXR5IGdhbWUiLCJzdGFydF91cmwiOiIuLyIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiMwMDAwMDAiLCJ0aGVtZV9jb2xvciI6IiMwMDAwMDAiLCJpY29ucyI6W3sic3JjIjoiZGF0YTppbWFnZS9zdmcreG1sO2Jhc2U2NCxQSE4yWnlCM2FXUjBhRDBpTVRJNElpQm9aV2xuYUhROUlqRXlPQ0lpSUhacFpYZENiM2c5SWpBZ01DQXhNamd0TVRJNENYb2c8L25tYm5OK0lFaEVUVlZPYVc1dklPUzlqT1M4ajZpaWEyREFqK0dGc2dnPT0iLCJzaXplcyI6IjUxMng1MTIiLCJ0eXBlIjoiaW1hZ2Uvc3ZnK3htbCJ9XX0=">
+    <meta name="theme-color" content="#000000">
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --bg-secondary: rgba(255,255,255,0.1);
+            --bg-card: white;
+            --bg-black-card: #1a1a1a;
+            --text-primary: white;
+            --text-secondary: black;
+            --text-card: black;
+            --text-black-card: white;
+            --border-color: #ddd;
+            --border-black-card: #333;
+            --accent-color: #4CAF50;
+            --accent-hover: #45a049;
+            --danger-color: #f44336;
+            --info-color: #2196F3;
+            --shadow-color: rgba(0,0,0,0.1);
+            --overlay-color: rgba(0,0,0,0.8);
+        }
+
+        /* THEMES */
+        [data-theme="midnight-gaming"] {
+            --bg-primary: linear-gradient(135deg, #0f1419 0%, #1a1f3a 50%, #2d1b69 100%);
+            --bg-secondary: rgba(100, 255, 218, 0.08);
+            --bg-card: #1e2139;
+            --bg-black-card: #0a0b0f;
+            --text-primary: #e1e5eb;
+            --text-secondary: #e1e5eb;
+            --text-card: #e1e5eb;
+            --text-black-card: #64ffda;
+            --border-color: #2a2d47;
+            --border-black-card: #64ffda;
+            --accent-color: #64ffda;
+            --accent-hover: #4fd3b8;
+            --danger-color: #ff6b9d;
+            --info-color: #7c4dff;
+            --shadow-color: rgba(0,0,0,0.4);
+            --overlay-color: rgba(15,20,25,0.95);
+        }
+        [data-theme="ocean-depths"] {
+            --bg-primary: linear-gradient(135deg, #0c4a6e 0%, #164e63 50%, #155e75 100%);
+            --bg-secondary: rgba(103, 232, 249, 0.1);
+            --bg-card: #1e293b;
+            --bg-black-card: #0f172a;
+            --text-primary: #f0f9ff;
+            --text-secondary: #f0f9ff;
+            --text-card: #f0f9ff;
+            --text-black-card: #67e8f9;
+            --border-color: #334155;
+            --border-black-card: #0ea5e9;
+            --accent-color: #0ea5e9;
+            --accent-hover: #0284c7;
+            --danger-color: #f87171;
+            --info-color: #3b82f6;
+            --shadow-color: rgba(0,0,0,0.3);
+            --overlay-color: rgba(12,74,110,0.9);
+        }
+        [data-theme="forest-sanctuary"] {
+            --bg-primary: linear-gradient(135deg, #14532d 0%, #166534 50%, #15803d 100%);
+            --bg-secondary: rgba(187, 247, 208, 0.1);
+            --bg-card: #1f2937;
+            --bg-black-card: #111827;
+            --text-primary: #f0fdf4;
+            --text-secondary: #f0fdf4;
+            --text-card: #f0fdf4;
+            --text-black-card: #bbf7d0;
+            --border-color: #374151;
+            --border-black-card: #22c55e;
+            --accent-color: #22c55e;
+            --accent-hover: #16a34a;
+            --danger-color: #ef4444;
+            --info-color: #3b82f6;
+            --shadow-color: rgba(0,0,0,0.3);
+            --overlay-color: rgba(20,83,45,0.9);
+        }
+        [data-theme="ruby-elegance"] {
+            --bg-primary: linear-gradient(135deg, #7f1d1d 0%, #991b1b 50%, #b91c1c 100%);
+            --bg-secondary: rgba(254, 202, 202, 0.1);
+            --bg-card: #1f2937;
+            --bg-black-card: #111827;
+            --text-primary: #fef2f2;
+            --text-secondary: #fef2f2;
+            --text-card: #fef2f2;
+            --text-black-card: #fbbf24;
+            --border-color: #374151;
+            --border-black-card: #f59e0b;
+            --accent-color: #f59e0b;
+            --accent-hover: #d97706;
+            --danger-color: #dc2626;
+            --info-color: #3b82f6;
+            --shadow-color: rgba(0,0,0,0.3);
+            --overlay-color: rgba(127,29,29,0.9);
+        }
+        [data-theme="arctic-professional"] {
+            --bg-primary: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%);
+            --bg-secondary: rgba(71, 85, 105, 0.05);
+            --bg-card: white;
+            --bg-black-card: #0f172a;
+            --text-primary: #0f172a;
+            --text-secondary: #0f172a;
+            --text-card: #0f172a;
+            --text-black-card: #e2e8f0;
+            --border-color: #e2e8f0;
+            --border-black-card: #475569;
+            --accent-color: #3b82f6;
+            --accent-hover: #2563eb;
+            --danger-color: #dc2626;
+            --info-color: #0ea5e9;
+            --shadow-color: rgba(0,0,0,0.1);
+            --overlay-color: rgba(248,250,252,0.95);
+        }
+        [data-theme="sunset-lounge"] {
+            --bg-primary: linear-gradient(135deg, #ea580c 0%, #dc2626 50%, #7c2d12 100%);
+            --bg-secondary: rgba(254, 215, 170, 0.1);
+            --bg-card: #292524;
+            --bg-black-card: #1c1917;
+            --text-primary: #fef7ed;
+            --text-secondary: #fef7ed;
+            --text-card: #fef7ed;
+            --text-black-card: #fed7aa;
+            --border-color: #44403c;
+            --border-black-card: #f97316;
+            --accent-color: #f97316;
+            --accent-hover: #ea580c;
+            --danger-color: #dc2626;
+            --info-color: #8b5cf6;
+            --shadow-color: rgba(0,0,0,0.3);
+            --overlay-color: rgba(234,88,12,0.9);
+        }
+        [data-theme="charcoal-minimalist"] {
+            --bg-primary: linear-gradient(135deg, #374151 0%, #4b5563 50%, #6b7280 100%);
+            --bg-secondary: rgba(243, 244, 246, 0.05);
+            --bg-card: #1f2937;
+            --bg-black-card: #111827;
+            --text-primary: #f9fafb;
+            --text-secondary: #f9fafb;
+            --text-card: #f9fafb;
+            --text-black-card: #d1d5db;
+            --border-color: #4b5563;
+            --border-black-card: #9ca3af;
+            --accent-color: #6366f1;
+            --accent-hover: #4f46e5;
+            --danger-color: #ef4444;
+            --info-color: #06b6d4;
+            --shadow-color: rgba(0,0,0,0.3);
+            --overlay-color: rgba(55,65,81,0.9);
+        }
+        [data-theme="lavender-dreams"] {
+            --bg-primary: linear-gradient(135deg, #c4b5fd 0%, #a78bfa 50%, #8b5cf6 100%);
+            --bg-secondary: rgba(139, 92, 246, 0.1);
+            --bg-card: #faf5ff;
+            --bg-black-card: #581c87;
+            --text-primary: #1e1b4b;
+            --text-secondary: #1e1b4b;
+            --text-card: #1e1b4b;
+            --text-black-card: #e9d5ff;
+            --border-color: #d8b4fe;
+            --border-black-card: #a855f7;
+            --accent-color: #7c3aed;
+            --accent-hover: #6d28d9;
+            --danger-color: #dc2626;
+            --info-color: #3b82f6;
+            --shadow-color: rgba(139,92,246,0.15);
+            --overlay-color: rgba(196,181,253,0.9);
+        }
+        [data-theme="copper-industrial"] {
+            --bg-primary: linear-gradient(135deg, #92400e 0%, #b45309 50%, #d97706 100%);
+            --bg-secondary: rgba(251, 191, 36, 0.1);
+            --bg-card: #451a03;
+            --bg-black-card: #1c0701;
+            --text-primary: #fef3c7;
+            --text-secondary: #fef3c7;
+            --text-card: #fef3c7;
+            --text-black-card: #fbbf24;
+            --border-color: #78350f;
+            --border-black-card: #f59e0b;
+            --accent-color: #f59e0b;
+            --accent-hover: #d97706;
+            --danger-color: #dc2626;
+            --info-color: #3b82f6;
+            --shadow-color: rgba(0,0,0,0.3);
+            --overlay-color: rgba(146,64,14,0.9);
+        }
+        [data-theme="neon-cyber"] {
+            --bg-primary: linear-gradient(135deg, #000000 0%, #1a0033 50%, #330066 100%);
+            --bg-secondary: rgba(0, 255, 255, 0.1);
+            --bg-card: #001122;
+            --bg-black-card: #000000;
+            --text-primary: #00ffff;
+            --text-secondary: #00ffff;
+            --text-card: #00ffff;
+            --text-black-card: #ff00ff;
+            --border-color: #003366;
+            --border-black-card: #ff00ff;
+            --accent-color: #ff00ff;
+            --accent-hover: #cc00cc;
+            --danger-color: #ff0066;
+            --info-color: #0099ff;
+            --shadow-color: rgba(0,255,255,0.2);
+            --overlay-color: rgba(0,0,0,0.95);
+        }
+        [data-theme="light"] {
+            --bg-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --bg-secondary: rgba(255,255,255,0.1);
+            --bg-card: white;
+            --bg-black-card: #1a1a1a;
+            --text-primary: white;
+            --text-secondary: black;
+            --text-card: black;
+            --text-black-card: white;
+            --border-color: #ddd;
+            --border-black-card: #333;
+            --accent-color: #4CAF50;
+            --accent-hover: #45a049;
+            --danger-color: #f44336;
+            --info-color: #2196F3;
+            --shadow-color: rgba(0,0,0,0.1);
+            --overlay-color: rgba(0,0,0,0.8);
+        }
+        [data-theme="dark"] {
+            --bg-primary: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            --bg-secondary: rgba(255,255,255,0.05);
+            --bg-card: #2c3e50;
+            --bg-black-card: #1a1a1a;
+            --text-primary: #ecf0f1;
+            --text-secondary: #ecf0f1;
+            --text-card: #ecf0f1;
+            --text-black-card: white;
+            --border-color: #34495e;
+            --border-black-card: #333;
+            --accent-color: #27ae60;
+            --accent-hover: #2ecc71;
+            --danger-color: #e74c3c;
+            --info-color: #3498db;
+            --shadow-color: rgba(0,0,0,0.3);
+            --overlay-color: rgba(0,0,0,0.9);
+        }
+
+        /* GENERAL STYLES */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: var(--bg-primary);
+            min-height: 100vh;
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .screen {
+            display: none;
+            min-height: calc(100vh - 60px); /* Adjust for footer */
+            padding: 20px;
+        }
+        .screen.active {
+            display: block;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .card {
+            background: var(--bg-card);
+            color: var(--text-card);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 10px;
+            box-shadow: 0 8px 32px var(--shadow-color);
+            transition: transform 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .black-card {
+            background: var(--bg-black-card);
+            color: var(--text-black-card);
+            border: 2px solid var(--border-black-card);
+        }
+        .white-card {
+            background: var(--bg-card);
+            color: var(--text-card);
+            border: 2px solid var(--border-color);
+            cursor: pointer;
+        }
+        .white-card:hover {
+            background: var(--bg-secondary);
+        }
+        .white-card.selected {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-hover);
+        }
+        .btn {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            background: var(--accent-hover);
+            transform: translateY(-2px);
+        }
+        .btn:disabled {
+            background: #aaa;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-secondary {
+            background: var(--info-color);
+        }
+        .btn-secondary:hover {
+            background: #0b7dda;
+        }
+        .btn-danger {
+            background: var(--danger-color);
+        }
+        .btn-danger:hover {
+            background: #da190b;
+        }
+        .input-group {
+            margin: 15px 0;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .input-group input, .input-group textarea, .input-group select {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            background: var(--bg-card);
+            color: var(--text-card);
+            border: 1px solid var(--border-color);
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--overlay-color);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.active {
+            display: flex;
+        }
+        .modal-content {
+            background: var(--bg-card);
+            color: var(--text-card);
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--accent-color);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px var(--shadow-color);
+            z-index: 10001;
+            transform: translateX(calc(100% + 30px));
+            transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+        .notification.show {
+            transform: translateX(0);
+        }
+        .notification.error { background: var(--danger-color); }
+        .notification.success { background: var(--accent-color); }
+        .notification.info { background: var(--info-color); }
+        .connection-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            color: white;
+            z-index: 1001;
+            transition: background-color 0.3s;
+        }
+        .connected { background: #4CAF50; }
+        .disconnected { background: #f44336; }
+        .connecting { background: #ff9800; }
+        .theme-toggle {
+            position: fixed;
+            top: 60px;
+            right: 10px;
+            background: var(--bg-secondary);
+            border: 2px solid var(--accent-color);
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            z-index: 1001;
+            transition: all 0.3s ease;
+        }
+        .theme-toggle:hover {
+            background: var(--accent-color);
+            color: white;
+        }
+        .dev-mode-toggle {
+            position: fixed;
+            top: 110px;
+            right: 10px;
+            background: var(--danger-color);
+            color: white;
+            padding: 6px 10px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 12px;
+            z-index: 1001;
+            transition: all 0.3s ease;
+            display: none;
+        }
+        .dev-mode-toggle.active {
+            display: block;
+        }
+        .dev-mode-toggle:hover {
+            background: #da190b;
+        }
+        .player-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .player-card {
+            background: var(--bg-secondary);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            color: var(--text-primary);
+        }
+        .player-card.judge {
+            background: rgba(255,215,0,0.3);
+            border: 2px solid gold;
+        }
+        .status {
+            text-align: center;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 10px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+        .scoreboard {
+            background: var(--bg-secondary);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            color: var(--text-primary);
+        }
+        .expansion-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .expansion-card {
+            background: var(--bg-secondary);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: var(--text-primary);
+            border: 2px solid transparent;
+        }
+        .expansion-card:hover {
+            background: var(--bg-card);
+            color: var(--text-card);
+        }
+        .expansion-card.selected {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-hover);
+        }
+        .qr-section {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .qr-code {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            display: inline-block;
+            margin: 10px;
+        }
+        .file-drop-zone {
+            border: 2px dashed var(--accent-color);
+            border-radius: 10px;
+            padding: 30px;
+            margin: 20px 0;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+        .file-drop-zone:hover, .file-drop-zone.dragover {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-hover);
+        }
+        .qr-option-btn {
+            background: var(--bg-secondary);
+            border: 2px solid var(--accent-color);
+            color: var(--text-primary);
+            padding: 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        .qr-option-btn:hover {
+            background: var(--accent-color);
+            color: white;
+        }
+        .custom-card-item {
+            background: var(--bg-secondary);
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--text-primary);
+        }
+        .card-list {
+            max-height: 400px;
+            overflow-y: auto;
+            background: var(--bg-secondary);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        .hand {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .game-area {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 20px 0;
+        }
+        .submissions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .chat {
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        .chat-messages {
+            max-height: 150px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+        }
+        .chat-message {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 5px;
+            background: rgba(255,255,255,0.1);
+        }
+        .chat-input {
+            display: flex;
+            gap: 10px;
+        }
+        .qr-scanner {
+            position: relative;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px auto;
+            max-width: 300px;
+        }
+        .qr-scanner video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .qr-scanner canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .scanner-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            height: 200px;
+            border: 2px solid var(--accent-color);
+            border-radius: 10px;
+            pointer-events: none;
+        }
+        .scanner-controls {
+            padding: 15px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            text-align: center;
+        }
+        .qr-import-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .theme-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .theme-option {
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            font-size: 12px;
+            position: relative;
+            min-height: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .theme-option:hover {
+            border-color: var(--accent-color);
+        }
+        .theme-option.selected {
+            border-color: var(--accent-color);
+            background: var(--accent-color);
+            color: white;
+        }
+        .theme-preview {
+            width: 100%;
+            height: 20px;
+            border-radius: 4px;
+            margin-bottom: 5px;
+        }
+        .card-editor {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .attribution-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.95);
+            color: white;
+            z-index: 10000;
+            transition: all 0.3s ease;
+            border-top: 2px solid var(--accent-color);
+        }
+        .attribution-footer.minimized {
+            transform: translateY(calc(100% - 40px));
+        }
+        .attribution-header {
+            padding: 10px 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.1);
+            min-height: 40px;
+        }
+        .attribution-header:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .attribution-content {
+            padding: 15px 20px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .attribution-content a {
+            color: var(--accent-color);
+            text-decoration: none;
+        }
+        .attribution-content a:hover {
+            text-decoration: underline;
+        }
+        .toggle-icon {
+            font-size: 18px;
+            transition: transform 0.3s ease;
+        }
+        .attribution-footer.minimized .toggle-icon {
+            transform: rotate(180deg);
+        }
+        .copyright-notice {
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .links-section {
+            margin-top: 10px;
+        }
+        .links-section a {
+            margin-right: 20px;
+            padding: 5px 10px;
+            background: rgba(76, 175, 80, 0.2);
+            border-radius: 5px;
+            display: inline-block;
+            margin-bottom: 5px;
+        }
+        .hidden {
+            display: none !important;
+        }
+        @media (max-width: 768px) {
+            .game-area, .card-editor {
+                grid-template-columns: 1fr;
+            }
+            .hand {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status" id="connectionStatus">Offline</div>
+    <div class="theme-toggle" id="themeToggle" onclick="showThemeSelector()">🎨 Midnight Gaming</div>
+    <div class="dev-mode-toggle" id="devModeToggle" onclick="toggleDevMode()">DEV</div>
+    <div class="notification" id="notification"></div>
+
+    <!-- Home Screen -->
+    <div class="screen active" id="homeScreen">
+        <div class="container">
+            <div class="header">
+                <h1>Cards Against Humanity</h1>
+                <p>A decentralized party game for horrible people</p>
+            </div>
+            
+            <div class="card">
+                <div class="input-group">
+                    <label for="playerName">Your Name:</label>
+                    <input type="text" id="playerName" placeholder="Enter your name" value="Player">
+                </div>
+                
+                <div class="input-group">
+                    <label for="roomCode">Room Code:</label>
+                    <input type="text" id="roomCode" placeholder="Enter code to join, or create a new room">
+                </div>
+                
+                <div class="input-group" id="connectionMethodGroup">
+                    <label for="connectionMethod">Connection Method (for new rooms):</label>
+                    <select id="connectionMethod">
+                        <option value="cloud-sync" selected>Hybrid (Cloud Sync)</option>
+                        <option value="host-migration">WebRTC + Host Migration</option>
+                        <option value="pure-webrtc">Pure WebRTC (Manual)</option>
+                    </select>
+                </div>
+                
+                <div id="connectionProgressContainer" style="padding: 10px; margin: 10px 0; border-radius: 5px; background: rgba(255,255,255,0.1); display: none;">
+                    <div id="connectionProgress"></div>
+                </div>
+                
+                <button class="btn" onclick="createRoom()">Create Room</button>
+                <button class="btn btn-secondary" onclick="joinRoom()">Join Room</button>
+                <button class="btn btn-secondary" onclick="showQRScanner()">Scan QR Code to Join</button>
+                <button class="btn btn-secondary" onclick="showCardEditor()">Custom Cards</button>
+                <button class="btn btn-secondary" onclick="showSettings()">Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Scanner Modal -->
+    <div class="modal" id="qrScannerModal">
+        <div class="modal-content">
+            <h2>Join Room with QR Code</h2>
+            
+            <div class="qr-import-options">
+                <div class="qr-option-btn" onclick="startCameraScanner()">
+                    📷 Scan with Camera
+                </div>
+                <div class="qr-option-btn" onclick="document.getElementById('qrFileInput').click()">
+                    📁 Upload Image
+                </div>
+                <div class="qr-option-btn" onclick="showDropZone()">
+                    📋 Drag & Drop
+                </div>
+            </div>
+            
+            <div class="file-drop-zone hidden" id="qrDropZone">
+                <p>📎 Drag and drop a QR code image here</p>
+                <p style="font-size: 12px; opacity: 0.7;">or click to browse files</p>
+            </div>
+            
+            <div class="qr-scanner hidden" id="cameraScanner">
+                <video id="qrVideo" autoplay muted playsinline></video>
+                <canvas id="qrScanCanvas" class="hidden"></canvas>
+                <div class="scanner-overlay"></div>
+                <div class="scanner-controls">
+                    <button class="btn btn-danger" onclick="stopCameraScanner()">Stop Camera</button>
+                    <p id="scannerStatus">Position QR code in the frame</p>
+                </div>
+            </div>
+            
+            <input type="file" id="qrFileInput" accept="image/*" class="hidden">
+            
+            <button class="btn btn-danger" onclick="closeQRScanner()">Close</button>
+        </div>
+    </div>
+
+    <!-- Lobby Screen -->
+    <div class="screen" id="lobbyScreen">
+        <div class="container">
+            <div class="header">
+                <h1>Room: <span id="currentRoomCode"></span></h1>
+                <p>Waiting for players...</p>
+            </div>
+            
+            <div class="player-list" id="lobbyPlayers"></div>
+            
+            <div class="qr-section">
+                <h3>Share Room</h3>
+                <div class="qr-code" id="roomQRCode">
+                    <canvas id="qrCanvas" width="200" height="200"></canvas>
+                </div>
+                <p>Scan QR code to join this room</p>
+                <button class="btn btn-secondary" onclick="shareRoom()">Share Room Link</button>
+            </div>
+            
+            <div class="card">
+                <h3>Game Settings</h3>
+                <div class="input-group">
+                    <label for="winningScore">Cards to Win:</label>
+                    <select id="winningScore">
+                        <option value="5">5 Cards</option>
+                        <option value="7" selected>7 Cards</option>
+                        <option value="10">10 Cards</option>
+                    </select>
+                </div>
+                
+                <div class="expansion-selector" id="expansionSelector"></div>
+                
+                <button class="btn" onclick="startGame()" id="startGameBtn" disabled>Start Game</button>
+                <button class="btn btn-danger" onclick="leaveRoom()">Leave Room</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div class="screen" id="gameScreen">
+        <div class="container">
+            <div class="header">
+                <h1>Round <span id="currentRound">1</span></h1>
+                <div class="status" id="gameStatus">Waiting for submissions...</div>
+            </div>
+            
+            <div class="scoreboard" id="scoreboard"></div>
+            
+            <div class="game-area">
+                <div>
+                    <h3>Black Card</h3>
+                    <div class="card black-card" id="blackCard">
+                        <p>Loading...</p>
+                    </div>
+                    
+                    <div id="submissionsArea">
+                        <h3>Submissions</h3>
+                        <div class="submissions" id="submissions"></div>
+                    </div>
+                </div>
+                
+                <div>
+                    <div id="handArea">
+                        <h3>Your Hand</h3>
+                        <div class="hand" id="playerHand"></div>
+                        <button class="btn" onclick="submitCards()" id="submitBtn" disabled>Submit Selected Cards</button>
+                    </div>
+                     <div class="chat">
+                        <h3>Chat</h3>
+                        <div class="chat-messages" id="chatMessages"></div>
+                        <div class="chat-input">
+                            <input type="text" id="chatInput" placeholder="Say something..." style="flex-grow: 1;">
+                            <button class="btn" onclick="sendMessage()">Send</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="btn btn-danger" onclick="leaveRoom()">Leave Game</button>
+        </div>
+    </div>
+
+    <!-- Card Editor Modal -->
+    <div class="modal" id="cardEditorModal">
+        <div class="modal-content">
+            <h2>Custom Cards</h2>
+            
+            <div class="card-editor">
+                <div>
+                    <h3>Add New Card</h3>
+                    <div class="input-group">
+                        <label>Card Type:</label>
+                        <select id="newCardType">
+                            <option value="white">White Card (Answer)</option>
+                            <option value="black">Black Card (Question)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Card Text:</label>
+                        <textarea id="newCardText" placeholder="Enter card text..." rows="3"></textarea>
+                    </div>
+                    <div class="input-group" id="pickGroup" style="display: none;">
+                        <label>Cards to Pick:</label>
+                        <select id="newCardPick">
+                            <option value="1">Pick 1</option>
+                            <option value="2">Pick 2</option>
+                            <option value="3">Pick 3</option>
+                        </select>
+                    </div>
+                    <button class="btn" onclick="addCustomCard()">Add Card</button>
+                </div>
+                
+                <div>
+                    <h3>Your Custom Cards</h3>
+                    <div class="card-list" id="customCardsList"></div>
+                    <button class="btn btn-secondary" onclick="exportCards()">Export Cards</button>
+                    <button class="btn btn-secondary" onclick="importCards()">Import Cards</button>
+                    <input type="file" id="importFile" accept=".json" style="display: none;">
+                </div>
+            </div>
+            
+            <button class="btn btn-danger" onclick="closeCardEditor()">Close</button>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <h2>Settings</h2>
+            
+            <div class="input-group">
+                <label>Theme Selection:</label>
+                <div class="theme-selector" id="themeSelectorContainer"></div>
+            </div>
+            
+            <div class="input-group">
+                <label>
+                    <input type="checkbox" id="enableCustomCards" checked> 
+                    Include my custom cards in games
+                </label>
+            </div>
+            
+            <div class="input-group">
+                <label>
+                    <input type="checkbox" id="enableNotifications" checked> 
+                    Enable notifications
+                </label>
+            </div>
+            
+            <div class="input-group">
+                <label>
+                    <input type="checkbox" id="enableAudioNotifications" checked> 
+                    Enable audio notifications
+                </label>
+            </div>
+            
+            <div class="input-group">
+                <label>
+                    <input type="checkbox" id="enableVisualNotifications" checked> 
+                    Enable visual notifications
+                </label>
+            </div>
+            
+            <div class="input-group">
+                <label>
+                    <input type="checkbox" id="enableDevMode"> 
+                    Enable development mode (350+ extra cards)
+                </label>
+            </div>
+            
+            <button class="btn" onclick="saveSettings()">Save Settings</button>
+            <button class="btn btn-danger" onclick="closeSettings()">Close</button>
+        </div>
+    </div>
+
+    <!-- Custom Confirm Modal -->
+    <div class="modal" id="confirmModal">
+        <div class="modal-content">
+            <h2 id="confirmTitle">Confirm</h2>
+            <p id="confirmMessage" style="margin: 20px 0;"></p>
+            <button class="btn" id="confirmOk">OK</button>
+            <button class="btn btn-danger" id="confirmCancel">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Attribution Footer - Non-Removable -->
+    <div class="attribution-footer" id="attributionFooter">
+        <div class="attribution-header" onclick="toggleAttribution()">
+            <span>© All Rights Reserved - Cards Against Humanity Online</span>
+            <span class="toggle-icon">▲</span>
+        </div>
+        <div class="attribution-content" id="attributionContent">
+            <div class="copyright-notice">
+                © All Rights Reserved - Mathew Tyler
+            </div>
+            <div>
+                This Cards Against Humanity implementation is the exclusive property of Mathew Tyler. 
+                All code, design, and implementation rights are reserved. Unauthorized reproduction, 
+                distribution, or modification is strictly prohibited.
+            </div>
+            <div class="links-section">
+                <a href="https://tylerpresident.com" target="_blank" rel="noopener">TylerPresident.com</a>
+                <a href="https://fakegov.com" target="_blank" rel="noopener">FakeGov.com</a>
+            </div>
+            <div style="font-size: 12px; margin-top: 10px; opacity: 0.8;">
+                This attribution notice is required and cannot be removed or modified.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- GLOBAL STATE & CONFIG ---
+        
+        let gameState = {
+            phase: 'home', players: [], currentPlayer: null, isHost: false, room: null,
+            currentRound: 1, judge: null, blackCard: null, submissions: [], hand: [],
+            selectedCards: [], scores: {}, winningScore: 7, selectedExpansions: ['base'], devMode: false
+        };
+
+        let appState = {
+            theme: 'midnight-gaming',
+            notifications: { enabled: true, audio: true, visual: true }
+        };
+
+        let networkState = {
+            method: 'host-migration', connections: new Map(), localId: generateId(),
+            isHost: false, hostId: null, dataChannels: new Map(), signaling: null, pollingInterval: null
+        };
+        
+        const rtcConfig = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+        };
+
+        const METHOD_PREFIXES = {
+            'cloud-sync': 'C', 'host-migration': 'H', 'pure-webrtc': 'M'
+        };
+
+        let notifications, qrGenerator, qrScanner, networkManager;
+
+        // --- THEMES & CARDS DATABASES ---
+        const themes = {
+            'midnight-gaming': { name: 'Midnight Gaming', rank: 1, preview: 'linear-gradient(135deg, #0f1419 0%, #2d1b69 100%)' },
+            'ocean-depths': { name: 'Ocean Depths', rank: 2, preview: 'linear-gradient(135deg, #0c4a6e 0%, #155e75 100%)' },
+            'forest-sanctuary': { name: 'Forest Sanctuary', rank: 3, preview: 'linear-gradient(135deg, #14532d 0%, #15803d 100%)' },
+            'ruby-elegance': { name: 'Ruby Elegance', rank: 4, preview: 'linear-gradient(135deg, #7f1d1d 0%, #b91c1c 100%)' },
+            'arctic-professional': { name: 'Arctic Professional', rank: 5, preview: 'linear-gradient(135deg, #f8fafc 0%, #cbd5e1 100%)' },
+            'sunset-lounge': { name: 'Sunset Lounge', rank: 6, preview: 'linear-gradient(135deg, #ea580c 0%, #7c2d12 100%)' },
+            'charcoal-minimalist': { name: 'Charcoal Minimalist', rank: 7, preview: 'linear-gradient(135deg, #374151 0%, #6b7280 100%)' },
+            'lavender-dreams': { name: 'Lavender Dreams', rank: 8, preview: 'linear-gradient(135deg, #c4b5fd 0%, #8b5cf6 100%)' },
+            'copper-industrial': { name: 'Copper Industrial', rank: 9, preview: 'linear-gradient(135deg, #92400e 0%, #d97706 100%)' },
+            'neon-cyber': { name: 'Neon Cyber', rank: 10, preview: 'linear-gradient(135deg, #000000 0%, #330066 100%)' },
+            'light': { name: 'Classic Light', rank: 11, preview: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
+            'dark': { name: 'Classic Dark', rank: 12, preview: 'linear-gradient(135deg, #2c3e50 0%, #34495e 100%)' }
+        };
+        const cardDatabase = {
+            base: {
+                name: "Base Game",
+                black: [ { text: "_ is the leading cause of death among _.", pick: 2 }, { text: "What's that sound?", pick: 1 }, { text: "I never truly understood _ until I encountered _.", pick: 2 }, { text: "What's the next Disney movie?", pick: 1 }, { text: "War! What is it good for?", pick: 1 }, { text: "_ would be woefully incomplete without _.", pick: 2 }, { text: "What's that smell?", pick: 1 }, { text: "This is the way the world ends. Not with a bang, but with _.", pick: 1 }, { text: "Alternative medicine is now embracing the curative powers of _.", pick: 1 }, { text: "And the Academy Award for _ goes to _.", pick: 2 }, { text: "What never fails to liven up the party?", pick: 1 }, { text: "_ + _ = _.", pick: 3 }, { text: "What's the most emo?", pick: 1 }, { text: "Instead of coal, Santa now gives the bad children _.", pick: 1 }, { text: "What helps the president unwind?", pick: 1 }, { text: "What's there a ton of in heaven?", pick: 1 }, { text: "Studies show that lab rats navigate mazes 50% faster after being exposed to _.", pick: 1 }, { text: "I do not know with what weapons World War III will be fought, but World War IV will be fought with _.", pick: 1 }, { text: "What gives me uncontrollable gas?", pick: 1 }, { text: "When I am President of the United States, I will create the Department of _.", pick: 1 }, { text: "Life was a lot easier before _ came along.", pick: 1 }, { text: "I got 99 problems but _ ain't one.", pick: 1 }, { text: "My mom freaked out when she looked at my browser history and found _.", pick: 1 }, { text: "What's my secret power?", pick: 1 }, { text: "But before I kill you, Mr. Bond, I must show you _.", pick: 1 }, { text: "What's the new fad diet?", pick: 1 }, { text: "What did I bring back from Mexico?", pick: 1 }, { text: "The class field trip was completely ruined by _.", pick: 1 }, { text: "What don't you want to find in your Chinese food?", pick: 1 }, { text: "What would grandma find disturbing, yet oddly charming?", pick: 1 }, { text: "What will always get you laid?", pick: 1 }, { text: "In the new Disney Channel Original Movie, Hannah Montana struggles with _ for the first time.", pick: 1 }, { text: "What's my anti-drug?", pick: 1 }, { text: "How am I maintaining my relationship status?", pick: 1 }, { text: "What will I bring back in time to convince people that I am a powerful wizard?", pick: 1 }, { text: "What has been making life difficult at the nudist colony?", pick: 1 }, { text: "What do old people smell like?", pick: 1 }, { text: "What am I giving up for Lent?", pick: 1 }, { text: "What's the gift that keeps on giving?", pick: 1 }, { text: "Next from J.K. Rowling: Harry Potter and the Chamber of _.", pick: 1 }, { text: "In M. Night Shyamalan's new movie, Bruce Willis discovers that _ had really been _ all along.", pick: 2 }, { text: "What ended my last relationship?", pick: 1 }, { text: "MTV's new reality show features eight washed-up celebrities living with _.", pick: 1 }, { text: "I drink to forget _.", pick: 1 }, { text: "Coming to Broadway this season, _: The Musical.", pick: 1 }, { text: "A romantic, candlelit dinner would be incomplete without _.", pick: 1 }, { text: "White people like _.", pick: 1 }, { text: "What's a girl's best friend?", pick: 1 }, { text: "What's the next Happy Meal toy?", pick: 1 }, { text: "While the United States raced the Soviet Union to the moon, the Mexican government funneled millions of pesos into research on _.", pick: 1 } ],
+                white: [ "Kids with unfortunate medical conditions", "Terrible life choices", "An awkward social situation", "Prescription medication", "Endless repetition", "The patriarchy", "Social conformity", "Questionable fashion choices", "Family dysfunction", "Religious extremism", "A child beauty pageant", "Biological functions", "A good sniff", "Medical complications", "Buzzing insects", "Switching to a competitor", "An actor's unfortunate anatomy", "Inappropriate photographs", "A professional wrestler", "A talk show host's physical attributes", "Overly enthusiastic gestures", "A superhero", "Poor life choices", "Psychological defense mechanisms", "Friendly pillow fights", "Soup that is too hot", "A media personality doing something dramatic", "A political figure's physical attributes", "Performance enhancing drugs", "Meaningless conversation", "Heartwarming orphans", "An unusual medical procedure", "Digestive issues", "Getting really high", "Inappropriate family relationships", "Historical villains", "Weaponized appendages", "The American Dream", "My collection of adult toys", "Being mean to children", "Grandma", "Famous people", "Public embarrassment", "Protein sources", "Adult activities", "The violation of our most basic human rights", "A developmental condition", "Unusual bodily functions", "Teenagers", "Impressive physical fitness", "Military pilots", "Questionable sportsmanship", "My anatomy", "Social commentary", "Free samples", "Pretending to care", "My relationship status", "Relaxing music", "A blank space", "Art class", "A disturbing image", "Supernatural beings", "Hope", "A medical condition", "An actor's career choices", "A container full of organs", "Inappropriate musical expressions", "Physics", "My inner demons", "Corporate buzzwords", "Musical performances", "Business consultants", "Online gaming", "Social media metrics", "A sudden medical emergency", "A balanced breakfast", "Technological improvements", "A mundane lifestyle", "A criminal investigation", "Athletic prowess", "Cosmetic surgery", "Human emotions", "Card games on motorcycles", "A controversial belief system", "Multiple romantic partners", "Being fabulous", "A political figure", "A celebrity's private moments" ]
+            },
+            expansion1: {
+                name: "Social Media Pack",
+                black: [ { text: "My TikTok went viral because of _.", pick: 1 }, { text: "Breaking: Local influencer cancelled for _.", pick: 1 }, { text: "Instagram vs Reality: What looks like _ is actually _.", pick: 2 }, { text: "The new social media trend involves _ and _.", pick: 2 }, { text: "LinkedIn is now endorsing people for _.", pick: 1 }, { text: "My Zoom background accidentally revealed _.", pick: 1 }, { text: "Twitter's new policy bans _.", pick: 1 }, { text: "I got unfriended because of my post about _.", pick: 1 }, { text: "The new dating app matches people based on _.", pick: 1 }, { text: "My search history is full of _.", pick: 1 }, { text: "The newest podcast is just three hours of _.", pick: 1 }, { text: "My followers expect daily content about _.", pick: 1 }, { text: "The algorithm keeps showing me ads for _.", pick: 1 }, { text: "I accidentally livestreamed _.", pick: 1 }, { text: "My profile says I'm interested in _.", pick: 1 } ],
+                white: [ "Parasocial relationships", "Crypto scams", "Influencer marketing", "Cancel culture", "Engagement farming", "Sponsored content", "Digital detox", "Internet drama", "Viral challenges", "Online trolls", "Echo chambers", "Fake news", "Data mining", "Digital addiction", "Online harassment", "Virtual reality", "Artificial intelligence", "Smart home devices", "Subscription services", "Cloud storage" ]
+            },
+            expansion2: {
+                name: "Modern Life Pack",
+                black: [ { text: "The real reason I work from home is _.", pick: 1 }, { text: "My therapist says I have issues with _.", pick: 1 }, { text: "The gig economy has made everyone a part-time _.", pick: 1 }, { text: "Climate change is causing _ in my backyard.", pick: 1 }, { text: "My meditation app reminded me to focus on _.", pick: 1 }, { text: "The food delivery driver judged me for ordering _.", pick: 1 }, { text: "My smart home device overheard me talking about _.", pick: 1 }, { text: "The subscription service I forgot about was for _.", pick: 1 }, { text: "My electric car runs on _ and good intentions.", pick: 1 }, { text: "The new self-help book is called 'Finding Yourself Through _'.", pick: 1 }, { text: "My coffee shop loyalty card rewards me with _.", pick: 1 }, { text: "The new exercise trend combines yoga with _.", pick: 1 }, { text: "My student loans will be paid off by _.", pick: 1 }, { text: "The housing market crashed because of _.", pick: 1 }, { text: "My side hustle involves selling _.", pick: 1 } ],
+                white: [ "Microplastics", "Essential oils", "Kombucha culture", "Cryptocurrency mining", "Minimalist lifestyle", "Plant-based meat", "Fast fashion", "Mindfulness apps", "Urban gardening", "Electric scooters", "Sustainable living", "Wellness culture", "Artisanal everything", "Organic certification", "Zero waste lifestyle", "Digital nomads", "Coworking spaces", "Meal prep culture", "Productivity hacks", "Self-care Sunday" ]
+            },
+            expansion3: {
+                name: "Gaming & Internet Pack",
+                black: [ { text: "My gaming setup is missing _.", pick: 1 }, { text: "The new battle royale game features 100 players and _.", pick: 1 }, { text: "I got banned from the Discord server for _.", pick: 1 }, { text: "My livestream was ruined by _.", pick: 1 }, { text: "The speedrun world record was broken using _.", pick: 1 }, { text: "My K/D ratio improved after I discovered _.", pick: 1 }, { text: "The new DLC includes _ as a playable character.", pick: 1 }, { text: "I spent $500 on microtransactions just to get _.", pick: 1 }, { text: "The toxic player in our lobby kept talking about _.", pick: 1 }, { text: "My parents don't understand why I need _ to game properly.", pick: 1 }, { text: "The game was delayed because the developers couldn't figure out _.", pick: 1 }, { text: "My favorite streamer was demonetized for showing _.", pick: 1 }, { text: "The esports tournament was rigged with _.", pick: 1 }, { text: "I'm addicted to _ and it's ruining my life.", pick: 1 }, { text: "The new update nerfed _ into the ground.", pick: 1 } ],
+                white: [ "RGB lighting", "Mechanical keyboards", "Gaming chairs", "Energy drinks", "Rage quitting", "Stream sniping", "Pay-to-win mechanics", "Loot boxes", "Camping strategies", "Respawn timers", "Achievement hunting", "Speedrunning glitches", "Frame rate drops", "Network lag", "Console wars", "PC master race", "Casual gamers", "Hardcore raiders", "Beta testing", "Early access" ]
+            }
+        };
+        const devCardDatabase = {
+            dev: {
+                name: "🚧 Development Deck",
+                black: [ { text: "Scientists have discovered that _ is actually caused by _.", pick: 2 }, { text: "The new Marvel movie features _ fighting against _.", pick: 2 }, { text: "Breaking News: Local man arrested for _.", pick: 1 }, { text: "My therapist says my obsession with _ stems from _.", pick: 2 }, { text: "The latest self-help book: 'How to Overcome _ in 30 Days'.", pick: 1 }, { text: "My dating profile mentions my love for _.", pick: 1 }, { text: "The zombie apocalypse started because someone ate _.", pick: 1 }, { text: "My Uber driver wouldn't stop talking about _.", pick: 1 }, { text: "The new startup idea: It's like Uber, but for _.", pick: 1 }, { text: "My Amazon shopping cart is full of _.", pick: 1 } ],
+                white: [ "Emotional support animals", "Cryptocurrency mining", "Influencer culture", "Cancel culture", "Social media addiction", "Dating apps", "Food delivery services", "Streaming services", "Self-driving cars", "Voice assistants", "Smart home devices", "Virtual reality", "Artificial intelligence", "Machine learning", "Blockchain technology", "Cloud computing", "Internet of Things", "Augmented reality", "3D printing", "Quantum computing" ]
+            }
+        };
+
+        // --- CLASSES (Managers, etc.) ---
+        
+        class NotificationManager {
+            constructor() {
+                this.audioContext = null;
+                this.audioInitialized = false;
+                this.sounds = {
+                    join: this.createSound(800, 0.1, 'sine'),
+                    leave: this.createSound(400, 0.1, 'sine'),
+                    win: this.createSound([523, 659, 784], 0.2, 'sine'),
+                    turn: this.createSound(600, 0.1, 'square'),
+                    submit: this.createSound(700, 0.05, 'triangle')
+                };
+            }
+
+            async initAudioContext() {
+                if (this.audioInitialized || !appState.notifications.audio) return;
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    if (this.audioContext.state === 'suspended') await this.audioContext.resume();
+                    this.audioInitialized = true;
+                } catch (error) {
+                    console.warn('Audio context initialization failed:', error);
+                    this.audioInitialized = false;
+                }
+            }
+
+            createSound(frequency, duration, type = 'sine') {
+                return async () => {
+                    if (!appState.notifications.audio || !this.audioContext || !this.audioInitialized) return;
+                    try {
+                        const frequencies = Array.isArray(frequency) ? frequency : [frequency];
+                        frequencies.forEach((freq, index) => {
+                            setTimeout(() => {
+                                try {
+                                    const oscillator = this.audioContext.createOscillator();
+                                    const gainNode = this.audioContext.createGain();
+                                    oscillator.connect(gainNode);
+                                    gainNode.connect(this.audioContext.destination);
+                                    oscillator.frequency.setValueAtTime(freq, this.audioContext.currentTime);
+                                    oscillator.type = type;
+                                    gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+                                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
+                                    oscillator.start();
+                                    oscillator.stop(this.audioContext.currentTime + duration);
+                                } catch (e) { console.warn('Sound generation failed:', e); }
+                            }, index * 150);
+                        });
+                    } catch (error) { console.warn('Audio playback failed:', error); }
+                };
+            }
+
+            show(message, type = 'info', duration = 3000) {
+                if (!appState.notifications.visual) return;
+                try {
+                    const notificationEl = safeGetElement('notification');
+                    if (!notificationEl) return;
+                    notificationEl.textContent = message;
+                    notificationEl.className = `notification ${type}`;
+                    notificationEl.classList.add('show');
+                    setTimeout(() => notificationEl.classList.remove('show'), duration);
+                    this.playSound(type);
+                } catch (error) { console.warn('Notification display failed:', error); }
+            }
+
+            async playSound(type) {
+                switch (type) {
+                    case 'success': await this.sounds.win(); break;
+                    case 'error': await this.sounds.leave(); break;
+                    default: await this.sounds.turn();
+                }
+            }
+
+            async playerJoined(playerName) { this.show(`${playerName} joined the game`, 'success'); await this.sounds.join(); }
+            async playerLeft(playerName) { this.show(`${playerName} left the game`, 'error'); await this.sounds.leave(); }
+            async roundWinner(playerName) { this.show(`${playerName} wins this round!`, 'success'); await this.sounds.win(); }
+            async yourTurn() { this.show('Your turn to submit cards!', 'info'); await this.sounds.turn(); }
+            async cardsSubmitted() { this.show('Cards submitted!', 'success'); await this.sounds.submit(); }
+            async gameStarted() { this.show('Game started!', 'success'); await this.sounds.win(); }
+            async judgeSelection() { this.show('You are the judge!', 'info'); await this.sounds.turn(); }
+        }
+        
+        class QRCodeGenerator {
+            generateQR(text, canvas) {
+                const size = 200;
+                const qrSize = 25;
+                const modules = this.generateQRMatrix(text, qrSize);
+                const ctx = canvas.getContext('2d');
+                canvas.width = size;
+                canvas.height = size;
+                const moduleSize = size / qrSize;
+                
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, size, size);
+                
+                ctx.fillStyle = '#000000';
+                for (let y = 0; y < qrSize; y++) {
+                    for (let x = 0; x < qrSize; x++) {
+                        if (modules[y][x]) {
+                            ctx.fillRect(x * moduleSize, y * moduleSize, moduleSize, moduleSize);
+                        }
+                    }
+                }
+            }
+
+            generateQRMatrix(text, size) {
+                const modules = Array(size).fill().map(() => Array(size).fill(false));
+                this.addFinderPattern(modules, 0, 0);
+                this.addFinderPattern(modules, 0, size - 7);
+                this.addFinderPattern(modules, size - 7, 0);
+                for (let i = 8; i < size - 8; i++) {
+                    modules[6][i] = i % 2 === 0;
+                    modules[i][6] = i % 2 === 0;
+                }
+                const data = this.encodeData(text);
+                this.placeData(modules, data, size);
+                return modules;
+            }
+
+            addFinderPattern(modules, startX, startY) {
+                const pattern = [ [1,1,1,1,1,1,1], [1,0,0,0,0,0,1], [1,0,1,1,1,0,1], [1,0,1,1,1,0,1], [1,0,1,1,1,0,1], [1,0,0,0,0,0,1], [1,1,1,1,1,1,1] ];
+                for (let i = 0; i < 7; i++) {
+                    for (let j = 0; j < 7; j++) {
+                        if (startX + i < modules.length && startY + j < modules[0].length) {
+                            modules[startX + i][startY + j] = pattern[i][j] === 1;
+                        }
+                    }
+                }
+            }
+
+            encodeData(text) {
+                let binary = '';
+                for (let i = 0; i < text.length; i++) {
+                    binary += text.charCodeAt(i).toString(2).padStart(8, '0');
+                }
+                return binary;
+            }
+
+            placeData(modules, data, size) {
+                let dataIndex = 0;
+                let up = true;
+                for (let col = size - 1; col > 0; col -= 2) {
+                    if (col === 6) col--;
+                    for (let row = 0; row < size; row++) {
+                        const y = up ? size - 1 - row : row;
+                        for (let c = 0; c < 2; c++) {
+                            const x = col - c;
+                            if (!this.isReserved(y, x, size) && dataIndex < data.length) {
+                                modules[y][x] = data[dataIndex] === '1';
+                                dataIndex++;
+                            }
+                        }
+                    }
+                    up = !up;
+                }
+            }
+
+            isReserved(x, y, size) {
+                if ((x < 8 && y < 8) || (x < 8 && y >= size - 8) || (x >= size - 8 && y < 8)) return true;
+                if (x === 6 || y === 6) return true;
+                return false;
+            }
+        }
+
+        class QRCodeScanner {
+            constructor() {
+                this.video = null; this.canvas = null; this.context = null;
+                this.scanning = false; this.stream = null; this.animationFrameId = null;
+            }
+
+            async startCamera() {
+                try {
+                    this.video = safeGetElement('qrVideo');
+                    this.canvas = safeGetElement('qrScanCanvas');
+                    if (!this.video || !this.canvas) return false;
+                    this.context = this.canvas.getContext('2d');
+                    
+                    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                        this.updateScannerStatus('Camera not supported.'); return false;
+                    }
+                    
+                    this.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                    this.video.srcObject = this.stream;
+                    this.scanning = true;
+                    
+                    this.video.onloadedmetadata = () => {
+                        this.canvas.width = this.video.videoWidth;
+                        this.canvas.height = this.video.videoHeight;
+                        this.scanFrame();
+                    };
+                    return true;
+                } catch (error) {
+                    console.error('Camera access denied:', error);
+                    this.updateScannerStatus('Camera access denied.');
+                    return false;
+                }
+            }
+
+            updateScannerStatus(message) { safeSetTextContent('scannerStatus', message); }
+
+            scanFrame() {
+                if (!this.scanning || !this.video.readyState === this.video.HAVE_ENOUGH_DATA) {
+                    this.animationFrameId = requestAnimationFrame(() => this.scanFrame());
+                    return;
+                }
+                
+                this.context.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
+                const imageData = this.context.getImageData(0, 0, this.canvas.width, this.canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                    inversionAttempts: "dontInvert",
+                });
+
+                if (code) {
+                    this.handleQRCodeDetected(code.data);
+                } else {
+                    this.animationFrameId = requestAnimationFrame(() => this.scanFrame());
+                }
+            }
+
+            handleQRCodeDetected(qrData) {
+                this.stopCamera();
+                this.updateScannerStatus('QR Code detected!');
+                try {
+                    const url = new URL(qrData);
+                    const roomCode = url.searchParams.get('room');
+                    if (roomCode) {
+                        safeGetElement('roomCode').value = roomCode;
+                        closeQRScanner();
+                        notifications.show(`Room code detected: ${roomCode}`, 'success');
+                        joinRoom();
+                    }
+                } catch (error) {
+                    notifications.show("Invalid QR code data.", "error");
+                }
+            }
+
+            async scanImageFile(file) {
+                return new Promise((resolve, reject) => {
+                    const img = new Image();
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    img.onload = () => {
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0);
+                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        const code = jsQR(imageData.data, imageData.width, imageData.height);
+                        if (code) {
+                            this.handleQRCodeDetected(code.data);
+                            resolve(code.data);
+                        } else {
+                            notifications.show('No QR code found in image.', 'error');
+                            reject('No QR code found');
+                        }
+                    };
+                    img.onerror = () => reject('Failed to load image');
+                    img.src = URL.createObjectURL(file);
+                });
+            }
+
+            stopCamera() {
+                if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
+                this.scanning = false;
+                if (this.stream) this.stream.getTracks().forEach(track => track.stop());
+                this.stream = null;
+                if (this.video) this.video.srcObject = null;
+            }
+        }
+
+        class NpointSignaling {
+            constructor() {
+                this.baseUrl = 'https://api.npoint.io/';
+            }
+
+            async createRoom(initialData) {
+                try {
+                    const response = await fetch(this.baseUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(initialData)
+                    });
+                    if (!response.ok) throw new Error(`API error: ${response.statusText}`);
+                    const result = await response.json();
+                    return result.id; // This is the bin ID
+                } catch (error) {
+                    console.error('Failed to create npoint.io room:', error);
+                    notifications.show('Could not create signaling room.', 'error');
+                    return null;
+                }
+            }
+
+            async getRoomData(binId) {
+                try {
+                    const response = await fetch(`${this.baseUrl}${binId}`);
+                    if (response.status === 404) return null; // Room not found
+                    if (!response.ok) throw new Error(`API error: ${response.statusText}`);
+                    return await response.json();
+                } catch (error) {
+                    console.error('Failed to get room data:', error);
+                    return null;
+                }
+            }
+
+            async updateRoomData(binId, data) {
+                try {
+                    const response = await fetch(`${this.baseUrl}${binId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    return response.ok;
+                } catch (error) {
+                    console.error('Failed to update room data:', error);
+                    return false;
+                }
+            }
+        }
+
+        class NetworkManager {
+            constructor() {
+                this.signaling = null;
+                this.webrtc = new WebRTCManager(this);
+            }
+
+            async createRoom(method) {
+                networkState.method = method;
+                networkState.isHost = true;
+                networkState.hostId = networkState.localId;
+                
+                if (method === 'cloud-sync') {
+                    this.signaling = new NpointSignaling();
+                    const initialData = {
+                        peers: [{ id: networkState.localId, name: gameState.currentPlayer.name }],
+                        signals: [],
+                    };
+                    const binId = await this.signaling.createRoom(initialData);
+                    if (!binId) return { success: false };
+                    networkState.signalingId = binId;
+                    this.startSignalingPoll();
+                    return { success: true, roomCode: binId };
+                }
+                
+                // For pure WebRTC, we need manual signal exchange
+                const { offer, pc } = await this.webrtc.createPeerConnection();
+                const offerString = JSON.stringify(offer);
+                // The room code is the offer itself for manual exchange
+                return { success: true, roomCode: btoa(offerString) };
+            }
+
+            async joinRoom(method, roomCode) {
+                networkState.method = method;
+                networkState.isHost = false;
+
+                if (method === 'cloud-sync') {
+                    this.signaling = new NpointSignaling();
+                    networkState.signalingId = roomCode;
+                    const roomData = await this.signaling.getRoomData(roomCode);
+                    if (!roomData) {
+                        notifications.show('Room not found.', 'error');
+                        return false;
+                    }
+
+                    const me = { id: networkState.localId, name: gameState.currentPlayer.name };
+                    if (!roomData.peers.find(p => p.id === me.id)) {
+                        roomData.peers.push(me);
+                        await this.signaling.updateRoomData(roomCode, roomData);
+                    }
+                    
+                    this.startSignalingPoll();
+                    roomData.peers.forEach(peer => {
+                        if (peer.id !== networkState.localId) {
+                            this.webrtc.connectToPeer(peer.id);
+                        }
+                    });
+                    return true;
+                }
+                
+                // Manual join
+                const offer = JSON.parse(atob(roomCode));
+                const { answer } = await this.webrtc.handleOfferFromPeer(null, offer);
+                const answerString = JSON.stringify(answer);
+                await customConfirm(`Send this answer back to the host: ${btoa(answerString)}`);
+                return true;
+            }
+
+            startSignalingPoll() {
+                if (networkState.pollingInterval) clearInterval(networkState.pollingInterval);
+                networkState.pollingInterval = setInterval(async () => {
+                    if (!this.signaling || !networkState.signalingId) return;
+                    const roomData = await this.signaling.getRoomData(networkState.signalingId);
+                    if (roomData) {
+                        roomData.peers.forEach(peer => {
+                            if (peer.id !== networkState.localId && !networkState.connections.has(peer.id)) {
+                                this.webrtc.connectToPeer(peer.id);
+                            }
+                        });
+                        const signalsForMe = roomData.signals.filter(s => s.to === networkState.localId);
+                        if(signalsForMe.length > 0) {
+                            signalsForMe.forEach(signal => this.webrtc.handleSignalingMessage(signal.from, signal.data));
+                            const remainingSignals = roomData.signals.filter(s => s.to !== networkState.localId);
+                            await this.signaling.updateRoomData(networkState.signalingId, {...roomData, signals: remainingSignals});
+                        }
+                    }
+                }, 3000);
+            }
+
+            async sendSignal(to, data) {
+                if (!this.signaling || !networkState.signalingId) return;
+                const roomData = await this.signaling.getRoomData(networkState.signalingId);
+                if (roomData) {
+                    roomData.signals.push({ from: networkState.localId, to, data });
+                    await this.signaling.updateRoomData(networkState.signalingId, roomData);
+                }
+            }
+
+            broadcast(data) { this.webrtc.broadcast(data); }
+
+            disconnect() {
+                if (networkState.pollingInterval) clearInterval(networkState.pollingInterval);
+                this.webrtc.disconnect();
+                this.signaling = null;
+                networkState.signalingId = null;
+            }
+        }
+
+        class WebRTCManager {
+            constructor(networkMgr) {
+                this.networkManager = networkMgr;
+            }
+
+            async createPeerConnection(peerId) {
+                const pc = new RTCPeerConnection(rtcConfig);
+                pc.onicecandidate = event => {
+                    if (event.candidate && networkState.method === 'cloud-sync') {
+                        this.networkManager.sendSignal(peerId, { type: 'candidate', candidate: event.candidate });
+                    }
+                };
+                pc.onconnectionstatechange = () => {
+                    if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected' || pc.connectionState === 'closed') {
+                        this.handlePeerDisconnection(peerId);
+                    }
+                };
+                pc.ondatachannel = event => this.setupDataChannel(event.channel, peerId);
+                return pc;
+            }
+
+            async connectToPeer(peerId) {
+                if (networkState.connections.has(peerId)) return;
+                const pc = await this.createPeerConnection(peerId);
+                networkState.connections.set(peerId, pc);
+                
+                const dataChannel = pc.createDataChannel('game');
+                this.setupDataChannel(dataChannel, peerId);
+
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                if (networkState.method === 'cloud-sync') {
+                    this.networkManager.sendSignal(peerId, { type: 'offer', sdp: offer.sdp });
+                }
+            }
+
+            async handleSignalingMessage(fromId, data) {
+                let pc = networkState.connections.get(fromId);
+                if (!pc && data.type === 'offer') {
+                    pc = await this.createPeerConnection(fromId);
+                    networkState.connections.set(fromId, pc);
+                }
+
+                try {
+                    if (data.type === 'offer') {
+                        await pc.setRemoteDescription(new RTCSessionDescription(data));
+                        const answer = await pc.createAnswer();
+                        await pc.setLocalDescription(answer);
+                        this.networkManager.sendSignal(fromId, { type: 'answer', sdp: answer.sdp });
+                    } else if (data.type === 'answer') {
+                        await pc.setRemoteDescription(new RTCSessionDescription(data));
+                    } else if (data.type === 'candidate') {
+                        await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+                    }
+                } catch (error) { console.error(`Error handling signal from ${fromId}:`, error); }
+            }
+
+            setupDataChannel(channel, peerId) {
+                channel.onopen = () => {
+                    networkState.dataChannels.set(peerId, channel);
+                    if (networkState.isHost) {
+                        this.sendToPeer(peerId, { type: 'full-game-state', state: gameState });
+                    }
+                };
+                channel.onmessage = event => this.handlePeerMessage(peerId, JSON.parse(event.data));
+                channel.onclose = () => this.handlePeerDisconnection(peerId);
+                channel.onerror = err => console.error(`Data channel error with ${peerId}:`, err);
+            }
+
+            handlePeerMessage(fromId, data) {
+                switch (data.type) {
+                    case 'chat-message': addChatMessage(data.playerName, data.message); break;
+                    case 'full-game-state':
+                        if (!networkState.isHost) {
+                            Object.assign(gameState, data.state);
+                            updateLobby();
+                            updateGameUI();
+                        }
+                        break;
+                    case 'player-action': handlePlayerAction(fromId, data.action); break;
+                }
+            }
+            
+            handlePeerDisconnection(peerId) {
+                networkState.connections.delete(peerId);
+                networkState.dataChannels.delete(peerId);
+                const player = gameState.players.find(p => p.id === peerId);
+                if (player) {
+                    gameState.players = gameState.players.filter(p => p.id !== peerId);
+                    notifications.playerLeft(player.name);
+                    updateLobby();
+                    updateScoreboard();
+                }
+            }
+
+            broadcast(data) {
+                const message = JSON.stringify(data);
+                for (const channel of networkState.dataChannels.values()) {
+                    if (channel.readyState === 'open') channel.send(message);
+                }
+            }
+            
+            sendToPeer(peerId, data) {
+                const channel = networkState.dataChannels.get(peerId);
+                if (channel && channel.readyState === 'open') channel.send(JSON.stringify(data));
+            }
+
+            disconnect() {
+                for (const pc of networkState.connections.values()) pc.close();
+                networkState.connections.clear();
+                networkState.dataChannels.clear();
+            }
+        }
+
+
+        // --- CORE APP LOGIC ---
+
+        function initializeApp() {
+            try {
+                console.log('Initializing Cards Against Humanity PWA...');
+                initializeCopyright();
+                initializeManagers();
+                initializePWA();
+                loadTheme();
+                loadDevMode();
+                loadSettings();
+                setupQRFileHandling();
+                checkUrlParams();
+                initializeEventListeners();
+                loadPlayerName();
+                loadCustomCards();
+                updateConnectionStatus('Offline');
+                initializeAttribution();
+                protectAttribution();
+                observeAttribution();
+                document.addEventListener('click', () => notifications.initAudioContext(), { once: true });
+                console.log('App initialization complete');
+            } catch (error) {
+                console.error('App initialization failed:', error);
+                document.body.innerHTML = '<h1>A critical error occurred. Please refresh the page.</h1>';
+            }
+        }
+        
+        function initializeManagers() {
+            notifications = new NotificationManager();
+            qrGenerator = new QRCodeGenerator();
+            qrScanner = new QRCodeScanner();
+            networkManager = new NetworkManager();
+        }
+
+        function initializePWA() {
+            if ('serviceWorker' in navigator) {
+                const swCode = `self.addEventListener('install', e => self.skipWaiting()); self.addEventListener('activate', e => e.waitUntil(clients.claim())); self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => new Response('Offline mode'))));`;
+                const swUrl = 'data:application/javascript,' + encodeURIComponent(swCode);
+                navigator.serviceWorker.register(swUrl, { scope: './' })
+                    .then(() => console.log('Service Worker registered successfully.'))
+                    .catch(e => console.error('SW registration failed:', e));
+            }
+        }
+
+        function generateId() {
+            return Math.random().toString(36).substr(2, 9);
+        }
+
+        async function customConfirm(message) {
+            return new Promise(resolve => {
+                const modal = safeGetElement('confirmModal');
+                const msgEl = safeGetElement('confirmMessage');
+                const okBtn = safeGetElement('confirmOk');
+                const cancelBtn = safeGetElement('confirmCancel');
+
+                msgEl.textContent = message;
+                modal.classList.add('active');
+
+                okBtn.onclick = () => {
+                    modal.classList.remove('active');
+                    resolve(true);
+                };
+                cancelBtn.onclick = () => {
+                    modal.classList.remove('active');
+                    resolve(false);
+                };
+            });
+        }
+
+        function getMethodFromPrefix(prefix) {
+            return Object.keys(METHOD_PREFIXES).find(key => METHOD_PREFIXES[key] === prefix);
+        }
+
+        function parseRoomCode(fullCode) {
+            if (typeof fullCode !== 'string') return { method: 'host-migration', code: fullCode };
+
+            // Cloud-sync codes are long and don't have a prefix
+            if (fullCode.length > 10 && !fullCode.includes('-')) {
+                return { method: 'cloud-sync', code: fullCode };
+            }
+            
+            const parts = fullCode.split('-');
+            if (parts.length < 2) return { method: 'host-migration', code: fullCode };
+
+            const prefix = parts[0];
+            const code = parts.slice(1).join('-');
+            const method = getMethodFromPrefix(prefix);
+            
+            return { method: method || 'host-migration', code: code };
+        }
+
+
+        async function createRoom() {
+            const name = safeGetElement('playerName').value.trim();
+            if (!name) {
+                notifications.show('Please enter your name', 'error');
+                return;
+            }
+            
+            const method = safeGetElement('connectionMethod').value;
+            gameState.currentPlayer = { id: networkState.localId, name: name };
+            showConnectionProgress('Creating room...');
+            
+            const { success, roomCode } = await networkManager.createRoom(method);
+            
+            if (success) {
+                const prefix = METHOD_PREFIXES[method] || 'H';
+                const fullRoomCode = method === 'cloud-sync' ? roomCode : `${prefix}-${roomCode}`;
+                gameState.room = fullRoomCode;
+                safeGetElement('roomCode').value = fullRoomCode;
+                savePlayerName(name);
+                hideConnectionProgress();
+                switchScreen('lobbyScreen');
+                updateLobby();
+                updateConnectionStatus(`Host (${getMethodDisplayName(method)})`);
+                generateRoomQR(fullRoomCode);
+                notifications.show('Room created! Share the code.', 'success');
+            } else {
+                hideConnectionProgress();
+                notifications.show('Failed to create room.', 'error');
+                updateConnectionStatus('Failed');
+            }
+        }
+
+        async function joinRoom() {
+            const name = safeGetElement('playerName').value.trim();
+            const fullRoomCode = safeGetElement('roomCode').value.trim();
+            if (!name || !fullRoomCode) {
+                notifications.show('Please enter your name and a valid room code', 'error');
+                return;
+            }
+
+            const { method, code } = parseRoomCode(fullRoomCode);
+            
+            if (!method || !code) {
+                notifications.show('Invalid room code format.', 'error');
+                return;
+            }
+
+            gameState.currentPlayer = { id: networkState.localId, name: name };
+            gameState.room = fullRoomCode;
+            
+            showConnectionProgress(`Joining room with ${getMethodDisplayName(method)}...`);
+            
+            const success = await networkManager.joinRoom(method, code);
+            if (success) {
+                savePlayerName(name);
+                hideConnectionProgress();
+                switchScreen('lobbyScreen');
+                updateLobby();
+                updateConnectionStatus(`Connected (${getMethodDisplayName(method)})`);
+            } else {
+                hideConnectionProgress();
+                updateConnectionStatus('Failed');
+            }
+        }
+
+        function leaveRoom() {
+            networkManager.disconnect();
+            Object.assign(gameState, { phase: 'home', players: [], isHost: false, room: null });
+            networkState.isHost = false;
+            networkState.hostId = null;
+            switchScreen('homeScreen');
+            updateConnectionStatus('Offline');
+        }
+
+        function startGame() {
+            if (!networkState.isHost || gameState.players.length < 2) {
+                notifications.show('Need at least 2 players to start', 'error');
+                return;
+            }
+            
+            gameState.phase = 'game';
+            gameState.winningScore = parseInt(safeGetElement('winningScore').value);
+            gameState.players.forEach(p => { gameState.scores[p.id] = 0; });
+            gameState.judge = gameState.players[0].id;
+            
+            dealInitialCards();
+            startRound();
+            
+            networkManager.broadcast({ type: 'game-state', state: { ...gameState, hand: null } });
+            
+            switchScreen('gameScreen');
+        }
+
+        function startRound() {
+            const blackCards = getAllBlackCards();
+            gameState.blackCard = blackCards[Math.floor(Math.random() * blackCards.length)];
+            gameState.submissions = [];
+            gameState.selectedCards = [];
+            updateGameUI();
+            safeSetTextContent('gameStatus', gameState.judge === gameState.currentPlayer.id ? 'You are the judge! Wait for submissions.' : `Submit ${gameState.blackCard.pick} card(s)`);
+        }
+
+        function nextRound() {
+            gameState.currentRound++;
+            const currentJudgeIndex = gameState.players.findIndex(p => p.id === gameState.judge);
+            gameState.judge = gameState.players[(currentJudgeIndex + 1) % gameState.players.length].id;
+            startRound();
+            if (networkState.isHost) {
+                networkManager.broadcast({ type: 'game-state', state: { ...gameState, hand: null } });
+            }
+        }
+        
+        function dealInitialCards() {
+            const whiteCards = getAllWhiteCards();
+            gameState.hand = [];
+            for (let i = 0; i < 10; i++) {
+                gameState.hand.push(whiteCards[Math.floor(Math.random() * whiteCards.length)]);
+            }
+            updateHand();
+        }
+
+        function selectCard(index) {
+            if (gameState.judge === gameState.currentPlayer.id) return;
+            const cardElement = safeGetElement('playerHand').children[index];
+            const isSelected = gameState.selectedCards.includes(index);
+            if (isSelected) {
+                gameState.selectedCards = gameState.selectedCards.filter(i => i !== index);
+                cardElement.classList.remove('selected');
+            } else if (gameState.selectedCards.length < gameState.blackCard.pick) {
+                gameState.selectedCards.push(index);
+                cardElement.classList.add('selected');
+            }
+            updateSubmitButton();
+        }
+
+        function submitCards() {
+            if (gameState.selectedCards.length !== gameState.blackCard.pick) return;
+            const submittedCards = gameState.selectedCards.map(index => gameState.hand[index]);
+            
+            gameState.selectedCards.sort((a, b) => b - a).forEach(index => gameState.hand.splice(index, 1));
+            
+            const whiteCards = getAllWhiteCards();
+            for (let i = 0; i < gameState.selectedCards.length; i++) {
+                gameState.hand.push(whiteCards[Math.floor(Math.random() * whiteCards.length)]);
+            }
+            
+            gameState.selectedCards = [];
+            const submission = { player: gameState.currentPlayer.id, cards: submittedCards };
+            
+            networkManager.broadcast({ type: 'player-action', action: { type: 'submit-cards', ...submission } });
+            handlePlayerAction(gameState.currentPlayer.id, { type: 'submit-cards', ...submission });
+        }
+
+        function handlePlayerAction(fromId, action) {
+            if (action.type === 'submit-cards') {
+                if (!gameState.submissions.find(s => s.player === fromId)) {
+                    gameState.submissions.push({ player: fromId, cards: action.cards });
+                    updateSubmissions();
+                    checkAllSubmissionsReceived();
+                }
+            } else if (action.type === 'judge-selection') {
+                // This is now handled by the host broadcasting the new state
+            }
+        }
+
+        function checkAllSubmissionsReceived() {
+            const nonJudgePlayers = gameState.players.filter(p => p.id !== gameState.judge);
+            if (gameState.submissions.length >= nonJudgePlayers.length) {
+                safeSetTextContent('gameStatus', networkState.isHost ? 'Choose the funniest answer!' : 'Judge is choosing...');
+            }
+        }
+
+        function selectWinner(index) {
+            if (!networkState.isHost || gameState.judge !== gameState.currentPlayer.id) return;
+
+            const winner = gameState.submissions[index];
+            gameState.scores[winner.player]++;
+            const winnerName = gameState.players.find(p => p.id === winner.player)?.name || 'Unknown';
+            
+            notifications.roundWinner(winnerName);
+            
+            if (gameState.scores[winner.player] >= gameState.winningScore) {
+                setTimeout(() => {
+                    notifications.show(`${winnerName} wins the game!`, 'success');
+                    networkManager.broadcast({ type: 'game-over', winner: winnerName });
+                    leaveRoom();
+                }, 3000);
+            } else {
+                setTimeout(() => nextRound(), 3000);
+            }
+        }
+
+        function sendMessage() {
+            const input = safeGetElement('chatInput');
+            const message = input.value.trim();
+            if (!message) return;
+            const chatData = { type: 'chat-message', playerName: gameState.currentPlayer.name, message: message };
+            networkManager.broadcast(chatData);
+            addChatMessage(chatData.playerName, chatData.message);
+            input.value = '';
+        }
+
+        // --- UI & DOM HELPERS ---
+
+        function updateGameUI() {
+            if(gameState.phase !== 'game') return;
+            safeSetTextContent('currentRound', gameState.currentRound);
+            safeSetInnerHTML('blackCard', `<p>${gameState.blackCard.text.replace(/_/g, '______')}</p>`);
+            updateHand();
+            updateSubmissions();
+            updateScoreboard();
+        }
+
+        function updateHand() {
+            const handElement = safeGetElement('playerHand');
+            handElement.innerHTML = '';
+            gameState.hand.forEach((card, index) => {
+                const cardElement = document.createElement('div');
+                cardElement.className = 'card white-card';
+                cardElement.innerHTML = `<p>${card}</p>`;
+                if (gameState.judge !== gameState.currentPlayer.id) {
+                    cardElement.onclick = () => selectCard(index);
+                }
+                if(gameState.selectedCards.includes(index)) cardElement.classList.add('selected');
+                handElement.appendChild(cardElement);
+            });
+            updateSubmitButton();
+        }
+
+        function updateSubmitButton() {
+            const submitBtn = safeGetElement('submitBtn');
+            const alreadySubmitted = gameState.submissions.some(s => s.player === gameState.currentPlayer.id);
+            submitBtn.disabled = alreadySubmitted || gameState.selectedCards.length !== (gameState.blackCard?.pick || 0) || gameState.judge === gameState.currentPlayer.id;
+        }
+
+        function updateSubmissions() {
+            const submissionsElement = safeGetElement('submissions');
+            submissionsElement.innerHTML = '';
+            gameState.submissions.forEach((submission, index) => {
+                const submissionElement = document.createElement('div');
+                submissionElement.className = 'card white-card';
+                submissionElement.innerHTML = submission.cards.map(card => `<p>${card}</p>`).join('');
+                if (networkState.isHost && gameState.judge === gameState.currentPlayer.id) {
+                    submissionElement.style.cursor = 'pointer';
+                    submissionElement.onclick = () => selectWinner(index);
+                }
+                submissionsElement.appendChild(submissionElement);
+            });
+        }
+
+        function updateScoreboard() {
+            const scoreboardElement = safeGetElement('scoreboard');
+            scoreboardElement.innerHTML = '<h3>Scoreboard</h3>';
+            const sortedPlayers = [...gameState.players].sort((a, b) => (gameState.scores[b.id] || 0) - (gameState.scores[a.id] || 0));
+            sortedPlayers.forEach(player => {
+                const score = gameState.scores[player.id] || 0;
+                const isJudge = player.id === gameState.judge;
+                scoreboardElement.innerHTML += `<div class="player-card ${isJudge ? 'judge' : ''}"><strong>${player.name}</strong> ${isJudge ? '(Judge)' : ''}<br>Score: ${score}</div>`;
+            });
+        }
+
+        function updateLobby() {
+            safeSetTextContent('currentRoomCode', gameState.room);
+            const playersElement = safeGetElement('lobbyPlayers');
+            playersElement.innerHTML = '';
+            gameState.players.forEach(player => {
+                const playerElement = document.createElement('div');
+                playerElement.className = 'player-card';
+                playerElement.innerHTML = `<strong>${player.name}</strong> ${player.id === gameState.currentPlayer.id ? '(You)' : ''} ${networkState.hostId === player.id ? '(Host)' : ''}`;
+                playersElement.appendChild(playerElement);
+            });
+            safeGetElement('startGameBtn').disabled = !networkState.isHost || gameState.players.length < 2;
+            updateExpansionSelector();
+        }
+
+        function updateExpansionSelector() {
+            const expansionElement = safeGetElement('expansionSelector');
+            expansionElement.innerHTML = '<h4>Select Card Packs:</h4>';
+            const allDecks = {...cardDatabase, ...(gameState.devMode && {dev: devCardDatabase.dev})};
+            
+            Object.keys(allDecks).forEach(key => {
+                const deck = allDecks[key];
+                const card = document.createElement('div');
+                card.className = 'expansion-card';
+                if (gameState.selectedExpansions.includes(key)) card.classList.add('selected');
+                card.innerHTML = `<h4>${deck.name}</h4><p>${deck.black.length} black</p><p>${deck.white.length} white</p>`;
+                card.onclick = () => toggleExpansion(key);
+                expansionElement.appendChild(card);
+            });
+        }
+
+        function toggleExpansion(expansionKey) {
+            const index = gameState.selectedExpansions.indexOf(expansionKey);
+            if (index > -1) {
+                gameState.selectedExpansions.splice(index, 1);
+            } else {
+                gameState.selectedExpansions.push(expansionKey);
+            }
+            if (gameState.selectedExpansions.filter(e => e !== 'dev').length === 0) {
+                gameState.selectedExpansions.push('base');
+            }
+            updateExpansionSelector();
+        }
+
+        function addChatMessage(player, message) {
+            const chatMessages = safeGetElement('chatMessages');
+            const messageElement = document.createElement('div');
+            messageElement.className = 'chat-message';
+            messageElement.innerHTML = `<strong>${player}:</strong> ${message}`;
+            chatMessages.appendChild(messageElement);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function switchScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(screen => screen.classList.remove('active'));
+            safeGetElement(screenId).classList.add('active');
+        }
+
+        function updateConnectionStatus(status) {
+            const el = safeGetElement('connectionStatus');
+            el.textContent = status;
+            el.className = 'connection-status';
+            if (status.includes('Connected') || status.includes('Host')) el.classList.add('connected');
+            else if (status.includes('...')) el.classList.add('connecting');
+            else el.classList.add('disconnected');
+        }
+
+        function showConnectionProgress(message) {
+            safeGetElement('connectionProgressContainer').style.display = 'block';
+            safeSetTextContent('connectionProgress', message);
+        }
+
+        function hideConnectionProgress() {
+            safeGetElement('connectionProgressContainer').style.display = 'none';
+        }
+
+        // --- QR & FILE HANDLING ---
+
+        function showQRScanner() { safeGetElement('qrScannerModal').classList.add('active'); }
+        function closeQRScanner() {
+            qrScanner.stopCamera();
+            safeGetElement('qrScannerModal').classList.remove('active');
+            safeGetElement('cameraScanner').classList.add('hidden');
+            safeGetElement('qrDropZone').classList.add('hidden');
+        }
+        async function startCameraScanner() {
+            safeGetElement('cameraScanner').classList.remove('hidden');
+            const success = await qrScanner.startCamera();
+            if (!success) {
+                setTimeout(() => safeGetElement('qrFileInput').click(), 1000);
+            }
+        }
+        function stopCameraScanner() {
+            qrScanner.stopCamera();
+            safeGetElement('cameraScanner').classList.add('hidden');
+        }
+        function showDropZone() {
+            const dropZone = safeGetElement('qrDropZone');
+            dropZone.classList.remove('hidden');
+            dropZone.onclick = () => safeGetElement('qrFileInput').click();
+        }
+        function setupQRFileHandling() {
+            const fileInput = safeGetElement('qrFileInput');
+            const dropZone = safeGetElement('qrDropZone');
+            fileInput.addEventListener('change', e => {
+                const file = e.target.files[0];
+                if (file) qrScanner.scanImageFile(file).catch(err => console.error(err));
+                fileInput.value = '';
+            });
+            dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+            dropZone.addEventListener('dragleave', e => { e.preventDefault(); dropZone.classList.remove('dragover'); });
+            dropZone.addEventListener('drop', e => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                const file = e.dataTransfer.files[0];
+                if (file) qrScanner.scanImageFile(file).catch(err => console.error(err));
+            });
+        }
+        function generateRoomQR(fullRoomCode) {
+            const canvas = safeGetElement('qrCanvas');
+            const currentUrl = window.location.href.split('?')[0];
+            const roomUrl = `${currentUrl}?room=${fullRoomCode}`;
+            qrGenerator.generateQR(roomUrl, canvas);
+        }
+        function shareRoom() {
+            const roomUrl = `${window.location.href.split('?')[0]}?room=${gameState.room}`;
+            if (navigator.share) {
+                navigator.share({ title: 'Join my Cards Against Humanity game!', url: roomUrl }).catch(console.error);
+            } else {
+                navigator.clipboard.writeText(roomUrl).then(() => notifications.show('Room link copied!', 'success'));
+            }
+        }
+
+        // --- SETTINGS & CUSTOM CARDS ---
+
+        function showSettings() {
+            const settings = getSettings();
+            safeGetElement('enableCustomCards').checked = settings.enableCustomCards;
+            safeGetElement('enableNotifications').checked = appState.notifications.enabled;
+            safeGetElement('enableAudioNotifications').checked = appState.notifications.audio;
+            safeGetElement('enableVisualNotifications').checked = appState.notifications.visual;
+            safeGetElement('enableDevMode').checked = gameState.devMode;
+            createThemeSelector();
+            safeGetElement('settingsModal').classList.add('active');
+        }
+        function closeSettings() { safeGetElement('settingsModal').classList.remove('active'); }
+        function saveSettings() {
+            const settings = {
+                enableCustomCards: safeGetElement('enableCustomCards').checked,
+            };
+            appState.notifications.enabled = safeGetElement('enableNotifications').checked;
+            appState.notifications.audio = safeGetElement('enableAudioNotifications').checked;
+            appState.notifications.visual = safeGetElement('enableVisualNotifications').checked;
+            gameState.devMode = safeGetElement('enableDevMode').checked;
+            
+            safeLocalStorageSetJSON('cah-settings', settings);
+            safeLocalStorageSetJSON('cah-notifications', appState.notifications);
+            safeLocalStorageSet('cah-dev-mode', gameState.devMode);
+            
+            toggleDevMode(gameState.devMode, true); // Update UI without toggling logic
+            closeSettings();
+            notifications.show('Settings saved!', 'success');
+        }
+        function showCardEditor() {
+            updateCustomCardsList();
+            safeGetElement('cardEditorModal').classList.add('active');
+        }
+        function closeCardEditor() { safeGetElement('cardEditorModal').classList.remove('active'); }
+        function addCustomCard() {
+            const type = safeGetElement('newCardType').value;
+            const text = safeGetElement('newCardText').value.trim();
+            if (!text) {
+                notifications.show('Please enter card text', 'error');
+                return;
+            }
+            const pick = parseInt(safeGetElement('newCardPick').value);
+            const customCards = getCustomCards();
+            if (type === 'black') {
+                customCards.black.push({ text, pick });
+            } else {
+                customCards.white.push(text);
+            }
+            saveCustomCards(customCards);
+            updateCustomCardsList();
+            safeGetElement('newCardText').value = '';
+            notifications.show('Card added!', 'success');
+        }
+        function updateCustomCardsList() {
+            const listElement = safeGetElement('customCardsList');
+            listElement.innerHTML = '';
+            const customCards = getCustomCards();
+            ['black', 'white'].forEach(type => {
+                if (customCards[type] && customCards[type].length > 0) {
+                    listElement.innerHTML += `<h4>${type.charAt(0).toUpperCase() + type.slice(1)} Cards:</h4>`;
+                    customCards[type].forEach((card, index) => {
+                        const item = document.createElement('div');
+                        item.className = 'custom-card-item';
+                        const cardText = type === 'black' ? `${card.text} (Pick ${card.pick})` : card;
+                        item.innerHTML = `<span>${cardText}</span><button class="btn btn-danger" onclick="removeCustomCard('${type}', ${index})">X</button>`;
+                        listElement.appendChild(item);
+                    });
+                }
+            });
+        }
+        function removeCustomCard(type, index) {
+            const customCards = getCustomCards();
+            customCards[type].splice(index, 1);
+            saveCustomCards(customCards);
+            updateCustomCardsList();
+        }
+        function exportCards() {
+            const blob = new Blob([JSON.stringify(getCustomCards(), null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'cah-custom-cards.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        function importCards() { safeGetElement('importFile').click(); }
+
+        // --- THEME & DEV MODE ---
+        
+        function showThemeSelector() {
+            showSettings();
+            setTimeout(() => safeGetElement('themeSelectorContainer').scrollIntoView({ behavior: 'smooth' }), 100);
+        }
+        function createThemeSelector() {
+            const selector = safeGetElement('themeSelectorContainer');
+            selector.innerHTML = '';
+            const sortedThemes = Object.entries(themes).sort((a, b) => a[1].rank - b[1].rank);
+            sortedThemes.forEach(([key, theme]) => {
+                const option = document.createElement('div');
+                option.className = 'theme-option';
+                if (appState.theme === key) option.classList.add('selected');
+                option.innerHTML = `<div class="theme-preview" style="background: ${theme.preview}"></div><strong>${theme.name}</strong>`;
+                option.onclick = () => {
+                    document.querySelectorAll('.theme-option').forEach(opt => opt.classList.remove('selected'));
+                    option.classList.add('selected');
+                    setTheme(key);
+                };
+                selector.appendChild(option);
+            });
+        }
+        function setTheme(themeName) {
+            if (!themes[themeName]) return;
+            document.documentElement.setAttribute('data-theme', themeName);
+            appState.theme = themeName;
+            safeSetTextContent('themeToggle', `🎨 ${themes[themeName].name}`);
+            safeLocalStorageSet('cah-theme', themeName);
+        }
+        function toggleDevMode(forceState, quiet = false) {
+            gameState.devMode = forceState !== undefined ? forceState : !gameState.devMode;
+            const devToggle = safeGetElement('devModeToggle');
+            devToggle.classList.toggle('active', gameState.devMode);
+            if (gameState.devMode) {
+                devToggle.textContent = 'DEV ✓';
+                devToggle.style.background = '#27ae60';
+                if (!quiet) notifications.show('Dev mode enabled', 'success');
+            } else {
+                devToggle.textContent = 'DEV';
+                devToggle.style.background = 'var(--danger-color)';
+                if (!quiet) notifications.show('Dev mode disabled', 'info');
+            }
+            if (gameState.phase === 'lobby') updateExpansionSelector();
+            safeLocalStorageSet('cah-dev-mode', gameState.devMode);
+        }
+
+        // --- INITIALIZATION & HELPERS ---
+        
+        function initializeEventListeners() {
+            safeGetElement('importFile').addEventListener('change', e => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = e => {
+                    try {
+                        const imported = JSON.parse(e.target.result);
+                        const existing = getCustomCards();
+                        if (imported.black) existing.black.push(...imported.black);
+                        if (imported.white) existing.white.push(...imported.white);
+                        saveCustomCards(existing);
+                        updateCustomCardsList();
+                        notifications.show('Cards imported!', 'success');
+                    } catch (err) { notifications.show('Error importing cards.', 'error'); }
+                };
+                reader.readAsText(file);
+            });
+            safeGetElement('newCardType').addEventListener('change', function() {
+                safeGetElement('pickGroup').style.display = this.value === 'black' ? 'block' : 'none';
+            });
+        }
+        
+        async function checkUrlParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const roomCode = urlParams.get('room');
+            if (roomCode) {
+                const join = await customConfirm(`Join room ${roomCode}?`);
+                if (join) {
+                    safeGetElement('roomCode').value = roomCode;
+                    loadPlayerName();
+                    joinRoom();
+                }
+            }
+        }
+        
+        function getMethodDisplayName(method) {
+            const names = { 'cloud-sync': 'Cloud Sync', 'pure-webrtc': 'Pure P2P', 'host-migration': 'P2P+Migration' };
+            return names[method] || method;
+        }
+
+        function getAllWhiteCards() {
+            let cards = [];
+            gameState.selectedExpansions.forEach(exp => {
+                const deck = exp === 'dev' ? devCardDatabase.dev : cardDatabase[exp];
+                if (deck) cards.push(...deck.white);
+            });
+            if (getSettings().enableCustomCards) cards.push(...getCustomCards().white);
+            return cards.length > 0 ? cards : ['No cards available'];
+        }
+
+        function getAllBlackCards() {
+            let cards = [];
+            gameState.selectedExpansions.forEach(exp => {
+                const deck = exp === 'dev' ? devCardDatabase.dev : cardDatabase[exp];
+                if (deck) cards.push(...deck.black);
+            });
+            if (getSettings().enableCustomCards) cards.push(...getCustomCards().black);
+            return cards.length > 0 ? cards : [{ text: 'No cards available', pick: 1 }];
+        }
+
+        // --- LOCAL STORAGE & SAFE ACCESSORS ---
+        
+        function safeGetElement(id) { return document.getElementById(id); }
+        function safeSetTextContent(id, text) { const el = safeGetElement(id); if (el) el.textContent = text; }
+        function safeSetInnerHTML(id, html) { const el = safeGetElement(id); if (el) el.innerHTML = html; }
+        function safeLocalStorageGet(key, def = null) { try { return localStorage.getItem(key) ?? def; } catch { return def; } }
+        function safeLocalStorageSet(key, val) { try { localStorage.setItem(key, val); } catch (e) { console.error(e); } }
+        function safeLocalStorageGetJSON(key, def = {}) { try { return JSON.parse(safeLocalStorageGet(key)) ?? def; } catch { return def; } }
+        function safeLocalStorageSetJSON(key, val) { safeLocalStorageSet(key, JSON.stringify(val)); }
+
+        function loadPlayerName() { safeGetElement('playerName').value = safeLocalStorageGet('cah-player-name', 'Player'); }
+        function savePlayerName(name) { safeLocalStorageSet('cah-player-name', name); }
+        function getCustomCards() { return safeLocalStorageGetJSON('cah-custom-cards', { black: [], white: [] }); }
+        function saveCustomCards(cards) { safeLocalStorageSetJSON('cah-custom-cards', cards); }
+        function loadCustomCards() { if (!safeLocalStorageGet('cah-custom-cards')) saveCustomCards({ black: [], white: [] }); }
+        function getSettings() { return safeLocalStorageGetJSON('cah-settings', { enableCustomCards: true }); }
+        function loadSettings() {
+            if (!safeLocalStorageGet('cah-settings')) safeLocalStorageSetJSON('cah-settings', { enableCustomCards: true });
+            appState.notifications = safeLocalStorageGetJSON('cah-notifications', { enabled: true, audio: true, visual: true });
+        }
+        function loadTheme() { setTheme(safeLocalStorageGet('cah-theme', 'midnight-gaming')); }
+        function loadDevMode() { toggleDevMode(safeLocalStorageGet('cah-dev-mode') === 'true', true); }
+
+        // --- ATTRIBUTION & COPYRIGHT (DO NOT REMOVE) ---
+        
+        function initializeCopyright() {
+            console.log("%c© All Rights Reserved - Mathew Tyler", "color: #ff0000; font-size: 20px; font-weight: bold;");
+            console.log("%cUnauthorized modification, reproduction, or redistribution is prohibited.", "color: #ff0000; font-size: 14px;");
+            console.log("%cWebsite: https://tylerpresident.com | https://fakegov.com", "color: #4CAF50; font-size: 14px;");
+        }
+        function toggleAttribution() { safeGetElement('attributionFooter').classList.toggle('minimized'); }
+        function initializeAttribution() { if (window.innerWidth <= 768) safeGetElement('attributionFooter').classList.add('minimized'); }
+        function protectAttribution() {
+            setInterval(() => {
+                const footer = safeGetElement('attributionFooter');
+                if (footer) {
+                    const styles = window.getComputedStyle(footer);
+                    if (styles.display === 'none' || styles.visibility === 'hidden') location.reload();
+                } else { location.reload(); }
+            }, 2000);
+        }
+        function observeAttribution() {
+            const observer = new MutationObserver(mutations => {
+                mutations.forEach(mutation => {
+                    mutation.removedNodes.forEach(node => {
+                        if (node.id === 'attributionFooter') location.reload();
+                    });
+                });
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+        }
+
+        // --- STARTUP ---
+        
+        window.addEventListener('error', e => console.error('Global error caught:', e.error));
+        window.addEventListener('unhandledrejection', e => console.error('Unhandled promise rejection:', e.reason));
+        document.addEventListener('DOMContentLoaded', initializeApp);
+
+    </script>
+</body>
+</html>
