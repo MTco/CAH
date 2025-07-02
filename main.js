@@ -13,12 +13,12 @@ let notifications, qrGenerator, qrScanner, networkManager;
 function initializeApp() {
     try {
         console.log('Initializing Cards Against Humanity...');
-        initializeCopyright();
+        networkState.localId = utils.generateId();
         initializeManagers();
         ui.loadTheme();
         loadDevMode();
         loadSettings();
-        setupQRFileHandling();
+        ui.setupQRFileHandling(qrScanner);
         checkUrlParams();
         initializeEventListeners();
         loadPlayerName();
@@ -39,7 +39,13 @@ function initializeManagers() {
     notifications = new managers.NotificationManager();
     window.notifications = notifications; // Make accessible globally for UI events
     qrGenerator = new managers.QRCodeGenerator();
-    qrScanner = new managers.QRCodeScanner();
+    window.qrGenerator = qrGenerator;
+    qrScanner = new managers.QRCodeScanner((roomCode) => {
+        utils.safeGetElement('roomCode').value = roomCode;
+        ui.closeQRScanner();
+        notifications.show(`Room code detected: ${roomCode}`, 'success');
+        joinRoom();
+    });
     networkManager = new network.NetworkManager();
     window.networkManager = networkManager; // For debugging
 }
