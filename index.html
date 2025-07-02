@@ -1049,9 +1049,9 @@
     </div>
 
     <!-- Attribution Footer - Non-Removable -->
-    <div class="attribution-footer" id="attributionFooter">
+    <div class="attribution-footer minimized" id="attributionFooter">
         <div class="attribution-header" onclick="toggleAttribution()">
-            <span>© All Rights Reserved - Cards Against Humanity Online</span>
+            <span>© All Rights Reserved - Mathew Tyler</span>
             <span class="toggle-icon">▲</span>
         </div>
         <div class="attribution-content" id="attributionContent">
@@ -1433,7 +1433,7 @@
                     });
                     if (!response.ok) throw new Error(`API error: ${response.statusText}`);
                     const result = await response.json();
-                    return result.id; // This is the bin ID
+                    return result.id;
                 } catch (error) {
                     console.error('Failed to create npoint.io room:', error);
                     notifications.show('Could not create signaling room.', 'error');
@@ -1444,7 +1444,7 @@
             async getRoomData(binId) {
                 try {
                     const response = await fetch(`${this.baseUrl}${binId}`);
-                    if (response.status === 404) return null; // Room not found
+                    if (response.status === 404) return null;
                     if (!response.ok) throw new Error(`API error: ${response.statusText}`);
                     return await response.json();
                 } catch (error) {
@@ -1492,10 +1492,8 @@
                     return { success: true, roomCode: binId };
                 }
                 
-                // For pure WebRTC, we need manual signal exchange
-                const { offer, pc } = await this.webrtc.createPeerConnection();
+                const { offer } = await this.webrtc.createPeerConnection(null, true);
                 const offerString = JSON.stringify(offer);
-                // The room code is the offer itself for manual exchange
                 return { success: true, roomCode: btoa(offerString) };
             }
 
@@ -1527,11 +1525,15 @@
                     return true;
                 }
                 
-                // Manual join
-                const offer = JSON.parse(atob(roomCode));
+                const offerString = atob(roomCode);
+                if(!offerString) return false;
+                const offer = JSON.parse(offerString);
                 const { answer } = await this.webrtc.handleOfferFromPeer(null, offer);
                 const answerString = JSON.stringify(answer);
-                await customConfirm(`Send this answer back to the host: ${btoa(answerString)}`);
+                const answerCode = btoa(answerString);
+                await customConfirm(`Send this answer code back to the host: ${answerCode}`);
+                const hostAnswer = prompt("Enter the host's answer code:");
+                if(hostAnswer) this.webrtc.handleAnswerFromPeer(null, JSON.parse(atob(hostAnswer)));
                 return true;
             }
 
@@ -1580,11 +1582,13 @@
                 this.networkManager = networkMgr;
             }
 
-            async createPeerConnection(peerId) {
+            async createPeerConnection(peerId = null, isInitiator = false) {
                 const pc = new RTCPeerConnection(rtcConfig);
                 pc.onicecandidate = event => {
-                    if (event.candidate && networkState.method === 'cloud-sync') {
-                        this.networkManager.sendSignal(peerId, { type: 'candidate', candidate: event.candidate });
+                    if (event.candidate) {
+                        if (networkState.method === 'cloud-sync') {
+                            this.networkManager.sendSignal(peerId, { type: 'candidate', candidate: event.candidate });
+                        }
                     }
                 };
                 pc.onconnectionstatechange = () => {
@@ -1593,19 +1597,21 @@
                     }
                 };
                 pc.ondatachannel = event => this.setupDataChannel(event.channel, peerId);
+                
+                if(isInitiator) {
+                    const dataChannel = pc.createDataChannel('game');
+                    this.setupDataChannel(dataChannel, peerId);
+                    const offer = await pc.createOffer();
+                    await pc.setLocalDescription(offer);
+                    return { pc, offer };
+                }
                 return pc;
             }
 
             async connectToPeer(peerId) {
                 if (networkState.connections.has(peerId)) return;
-                const pc = await this.createPeerConnection(peerId);
+                const { pc, offer } = await this.createPeerConnection(peerId, true);
                 networkState.connections.set(peerId, pc);
-                
-                const dataChannel = pc.createDataChannel('game');
-                this.setupDataChannel(dataChannel, peerId);
-
-                const offer = await pc.createOffer();
-                await pc.setLocalDescription(offer);
                 if (networkState.method === 'cloud-sync') {
                     this.networkManager.sendSignal(peerId, { type: 'offer', sdp: offer.sdp });
                 }
@@ -1617,7 +1623,6 @@
                     pc = await this.createPeerConnection(fromId);
                     networkState.connections.set(fromId, pc);
                 }
-
                 try {
                     if (data.type === 'offer') {
                         await pc.setRemoteDescription(new RTCSessionDescription(data));
@@ -1627,9 +1632,23 @@
                     } else if (data.type === 'answer') {
                         await pc.setRemoteDescription(new RTCSessionDescription(data));
                     } else if (data.type === 'candidate') {
-                        await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+                        if(pc.remoteDescription) await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
                     }
                 } catch (error) { console.error(`Error handling signal from ${fromId}:`, error); }
+            }
+            
+            async handleOfferFromPeer(peerId, offer) {
+                const pc = await this.createPeerConnection(peerId);
+                networkState.connections.set(peerId, pc);
+                await pc.setRemoteDescription(new RTCSessionDescription(offer));
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+                return { pc, answer };
+            }
+
+            async handleAnswerFromPeer(peerId, answer) {
+                const pc = networkState.connections.get(peerId);
+                if (pc) await pc.setRemoteDescription(new RTCSessionDescription(answer));
             }
 
             setupDataChannel(channel, peerId) {
@@ -1728,8 +1747,9 @@
         function initializePWA() {
             if ('serviceWorker' in navigator) {
                 const swCode = `self.addEventListener('install', e => self.skipWaiting()); self.addEventListener('activate', e => e.waitUntil(clients.claim())); self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => new Response('Offline mode'))));`;
-                const swUrl = 'data:application/javascript,' + encodeURIComponent(swCode);
-                navigator.serviceWorker.register(swUrl, { scope: './' })
+                const blob = new Blob([swCode], { type: 'application/javascript' });
+                const swUrl = URL.createObjectURL(blob);
+                navigator.serviceWorker.register(swUrl)
                     .then(() => console.log('Service Worker registered successfully.'))
                     .catch(e => console.error('SW registration failed:', e));
             }
@@ -1765,15 +1785,14 @@
         }
 
         function parseRoomCode(fullCode) {
-            if (typeof fullCode !== 'string') return { method: 'host-migration', code: fullCode };
+            if (typeof fullCode !== 'string') return { method: null, code: null };
 
-            // Cloud-sync codes are long and don't have a prefix
             if (fullCode.length > 10 && !fullCode.includes('-')) {
                 return { method: 'cloud-sync', code: fullCode };
             }
             
             const parts = fullCode.split('-');
-            if (parts.length < 2) return { method: 'host-migration', code: fullCode };
+            if (parts.length < 2) return { method: null, code: null };
 
             const prefix = parts[0];
             const code = parts.slice(1).join('-');
@@ -2379,9 +2398,9 @@
         function safeGetElement(id) { return document.getElementById(id); }
         function safeSetTextContent(id, text) { const el = safeGetElement(id); if (el) el.textContent = text; }
         function safeSetInnerHTML(id, html) { const el = safeGetElement(id); if (el) el.innerHTML = html; }
-        function safeLocalStorageGet(key, def = null) { try { return localStorage.getItem(key) ?? def; } catch { return def; } }
+        function safeLocalStorageGet(key, def = null) { try { const item = localStorage.getItem(key); return item === null ? def : item; } catch { return def; } }
         function safeLocalStorageSet(key, val) { try { localStorage.setItem(key, val); } catch (e) { console.error(e); } }
-        function safeLocalStorageGetJSON(key, def = {}) { try { return JSON.parse(safeLocalStorageGet(key)) ?? def; } catch { return def; } }
+        function safeLocalStorageGetJSON(key, def = {}) { try { const item = safeLocalStorageGet(key); return item ? JSON.parse(item) : def; } catch { return def; } }
         function safeLocalStorageSetJSON(key, val) { safeLocalStorageSet(key, JSON.stringify(val)); }
 
         function loadPlayerName() { safeGetElement('playerName').value = safeLocalStorageGet('cah-player-name', 'Player'); }
@@ -2405,7 +2424,7 @@
             console.log("%cWebsite: https://tylerpresident.com | https://fakegov.com", "color: #4CAF50; font-size: 14px;");
         }
         function toggleAttribution() { safeGetElement('attributionFooter').classList.toggle('minimized'); }
-        function initializeAttribution() { if (window.innerWidth <= 768) safeGetElement('attributionFooter').classList.add('minimized'); }
+        function initializeAttribution() { /* Now minimized by default in HTML */ }
         function protectAttribution() {
             setInterval(() => {
                 const footer = safeGetElement('attributionFooter');
