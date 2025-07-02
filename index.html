@@ -15,7 +15,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cards Against Humanity Online - © Mathew Tyler</title>
-    <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiQ2FyZHMgQWdhaW5zdCBIdW1hbml0eSIsInNob3J0X25hbWUiOiJDQUgiLCJkZXNjcmlwdGlvbiI6IkEgZGVjZW50cmFsaXplZCBDYXJkcyBBZ2FpbnN0IEh1bWFuaXR5IGdhbWUiLCJzdGFydF91cmwiOiIuLyIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiMwMDAwMDAiLCJ0aGVtZV9jb2xvciI6IiMwMDAwMDAiLCJpY29ucyI6W3sic3JjIjoiZGF0YTppbWFnZS9zdmcreG1sO2Jhc2U2NCxQSE4yWnlCM2FXUjBhRDBpTVRJNElpQm9aV2xuYUhROUlqRXlPQ0lpSUhacFpYZENiM2c5SWpBZ01DQXhNamd0TVRJNENYb2c8L25tYm5OK0lFaEVUVlZPYVc1dklPUzlqT1M4ajZpaWEyREFqK0dGc2dnPT0iLCJzaXplcyI6IjUxMng1MTIiLCJ0eXBlIjoiaW1hZ2Uvc3ZnK3htbCJ9XX0=">
     <meta name="theme-color" content="#000000">
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <style>
@@ -807,7 +806,6 @@
                     <label for="connectionMethod">Connection Method (for new rooms):</label>
                     <select id="connectionMethod">
                         <option value="cloud-sync" selected>Hybrid (Cloud Sync)</option>
-                        <option value="host-migration">WebRTC + Host Migration</option>
                         <option value="pure-webrtc">Pure WebRTC (Manual)</option>
                     </select>
                 </div>
@@ -1048,6 +1046,25 @@
         </div>
     </div>
 
+    <!-- Manual WebRTC Modal -->
+    <div class="modal" id="manualRtcModal">
+        <div class="modal-content">
+            <h2 id="manualRtcTitle">Manual Connection</h2>
+            <p id="manualRtcMessage" style="margin: 15px 0;"></p>
+            <div class="input-group">
+                <label id="manualRtcCodeLabel">Code:</label>
+                <textarea id="manualRtcCode" rows="4" readonly style="word-break: break-all;"></textarea>
+                 <button class="btn" onclick="copyManualCode()">Copy Code</button>
+            </div>
+            <div class="input-group" id="manualRtcInputGroup">
+                <label id="manualRtcInputLabel">Enter Peer's Code:</label>
+                <textarea id="manualRtcInput" rows="4"></textarea>
+            </div>
+            <button class="btn" id="manualRtcSubmit">Submit</button>
+            <button class="btn btn-danger" id="manualRtcCancel">Cancel</button>
+        </div>
+    </div>
+
     <!-- Attribution Footer - Non-Removable -->
     <div class="attribution-footer minimized" id="attributionFooter">
         <div class="attribution-header" onclick="toggleAttribution()">
@@ -1088,7 +1105,7 @@
         };
 
         let networkState = {
-            method: 'host-migration', connections: new Map(), localId: generateId(),
+            method: 'cloud-sync', connections: new Map(), localId: generateId(),
             isHost: false, hostId: null, dataChannels: new Map(), signaling: null, pollingInterval: null
         };
         
@@ -1100,7 +1117,7 @@
         };
 
         const METHOD_PREFIXES = {
-            'cloud-sync': 'C', 'host-migration': 'H', 'pure-webrtc': 'M'
+            'cloud-sync': 'C', 'pure-webrtc': 'M'
         };
 
         let notifications, qrGenerator, qrScanner, networkManager;
@@ -1534,7 +1551,12 @@
                 const { answer } = await this.webrtc.handleOfferFromPeer(null, offer);
                 const answerString = JSON.stringify(answer);
                 const answerCode = btoa(answerString);
-                const hostAnswerCode = await prompt(`Send this answer code back to the host, then enter their answer code below:`, answerCode);
+                
+                const hostAnswerCode = await manualRtcPrompt(
+                    'Your Answer Code',
+                    'Share this code with the host, then enter their final code below.',
+                    answerCode
+                );
                 
                 if(hostAnswerCode) {
                     const hostAnswer = safeJsonParse(atob(hostAnswerCode));
@@ -1663,6 +1685,7 @@
                     if (networkState.isHost) {
                         this.sendToPeer(peerId, { type: 'full-game-state', state: gameState });
                     }
+                    this.sendToPeer(peerId, { type: 'player-info', player: gameState.currentPlayer });
                 };
                 channel.onmessage = event => this.handlePeerMessage(peerId, safeJsonParse(event.data));
                 channel.onclose = () => this.handlePeerDisconnection(peerId);
@@ -1678,6 +1701,16 @@
                             Object.assign(gameState, data.state);
                             updateLobby();
                             updateGameUI();
+                        }
+                        break;
+                    case 'player-info':
+                        if (networkState.isHost) {
+                            if (!gameState.players.find(p => p.id === data.player.id)) {
+                                gameState.players.push(data.player);
+                                notifications.playerJoined(data.player.name);
+                                this.broadcast({ type: 'game-state', state: gameState });
+                                updateLobby();
+                            }
                         }
                         break;
                     case 'player-action': handlePlayerAction(fromId, data.action); break;
@@ -1720,7 +1753,7 @@
 
         function initializeApp() {
             try {
-                console.log('Initializing Cards Against Humanity PWA...');
+                console.log('Initializing Cards Against Humanity...');
                 initializeCopyright();
                 initializeManagers();
                 loadTheme();
@@ -1754,7 +1787,7 @@
             return Math.random().toString(36).substr(2, 9);
         }
 
-        async function customConfirm(message) {
+        async function customConfirm(message, showCancel = true) {
             return new Promise(resolve => {
                 const modal = safeGetElement('confirmModal');
                 const msgEl = safeGetElement('confirmMessage');
@@ -1762,6 +1795,7 @@
                 const cancelBtn = safeGetElement('confirmCancel');
 
                 msgEl.textContent = message;
+                cancelBtn.style.display = showCancel ? 'inline-block' : 'none';
                 modal.classList.add('active');
 
                 okBtn.onclick = () => {
@@ -1774,6 +1808,36 @@
                 };
             });
         }
+        
+        async function manualRtcPrompt(title, message, code, showInput = true) {
+             return new Promise(resolve => {
+                const modal = safeGetElement('manualRtcModal');
+                safeGetElement('manualRtcTitle').textContent = title;
+                safeGetElement('manualRtcMessage').textContent = message;
+                safeGetElement('manualRtcCode').value = code;
+                safeGetElement('manualRtcInputGroup').style.display = showInput ? 'block' : 'none';
+                
+                modal.classList.add('active');
+
+                safeGetElement('manualRtcSubmit').onclick = () => {
+                    const input = safeGetElement('manualRtcInput').value;
+                    modal.classList.remove('active');
+                    resolve(input);
+                };
+                safeGetElement('manualRtcCancel').onclick = () => {
+                    modal.classList.remove('active');
+                    resolve(null);
+                };
+            });
+        }
+        
+        function copyManualCode() {
+            const code = safeGetElement('manualRtcCode').value;
+            navigator.clipboard.writeText(code).then(() => {
+                notifications.show('Code copied to clipboard!', 'success');
+            });
+        }
+
 
         function getMethodFromPrefix(prefix) {
             return Object.keys(METHOD_PREFIXES).find(key => METHOD_PREFIXES[key] === prefix);
@@ -1782,18 +1846,23 @@
         function parseRoomCode(fullCode) {
             if (typeof fullCode !== 'string') return { method: null, code: null };
 
-            if (fullCode.length > 10 && !fullCode.includes('-')) {
+            if (fullCode.length > 20 && !fullCode.includes('-')) {
                 return { method: 'cloud-sync', code: fullCode };
             }
             
             const parts = fullCode.split('-');
-            if (parts.length < 2) return { method: null, code: null };
+            if (parts.length > 0 && getMethodFromPrefix(parts[0])) {
+                const prefix = parts[0];
+                const code = parts.slice(1).join('-');
+                const method = getMethodFromPrefix(prefix);
+                return { method, code };
+            }
 
-            const prefix = parts[0];
-            const code = parts.slice(1).join('-');
-            const method = getMethodFromPrefix(prefix);
+            if (fullCode.length > 20) {
+                 return { method: 'pure-webrtc', code: fullCode };
+            }
             
-            return { method: method || 'host-migration', code: code };
+            return { method: 'cloud-sync', code: fullCode };
         }
 
 
@@ -1806,16 +1875,29 @@
             
             const method = safeGetElement('connectionMethod').value;
             gameState.currentPlayer = { id: networkState.localId, name: name };
+            gameState.players.push(gameState.currentPlayer);
             showConnectionProgress('Creating room...');
             
             const { success, roomCode } = await networkManager.createRoom(method);
             
             if (success) {
-                const prefix = METHOD_PREFIXES[method] || 'H';
+                const prefix = METHOD_PREFIXES[method] || 'C';
                 const fullRoomCode = method === 'cloud-sync' ? roomCode : `${prefix}-${roomCode}`;
                 gameState.room = fullRoomCode;
                 safeGetElement('roomCode').value = fullRoomCode;
                 savePlayerName(name);
+                
+                if (method === 'pure-webrtc') {
+                    const answerCode = await manualRtcPrompt('Room Created (Manual)', 'Share this code with the joining player, then enter their answer code below.', roomCode);
+                    if(answerCode) {
+                        const answer = safeJsonParse(atob(answerCode));
+                        if(answer) networkManager.webrtc.handleAnswerFromPeer(null, answer);
+                    } else {
+                        leaveRoom();
+                        return;
+                    }
+                }
+
                 hideConnectionProgress();
                 switchScreen('lobbyScreen');
                 updateLobby();
